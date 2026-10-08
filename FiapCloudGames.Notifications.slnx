@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FiapCloudGames.Notifications.Api/FiapCloudGames.Notifications.Api.csproj" />
+    <Project Path="src/FiapCloudGames.Notifications.Application/FiapCloudGames.Notifications.Application.csproj" />
+    <Project Path="src/FiapCloudGames.Notifications.Domain/FiapCloudGames.Notifications.Domain.csproj" />
+    <Project Path="src/FiapCloudGames.Notifications.Infrastructure/FiapCloudGames.Notifications.Infrastructure.csproj" />
+    <Project Path="src/FiapCloudGames.Notifications.Presentation/FiapCloudGames.Notifications.Presentation.csproj" />
+    <Project Path="src/FiapCloudGames.Notifications.Migrations/FiapCloudGames.Notifications.Migrations.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FiapCloudGames.Notifications.ArchitectureTests/FiapCloudGames.Notifications.ArchitectureTests.csproj" />
+    <Project Path="tests/FiapCloudGames.Notifications.IntegrationTests/FiapCloudGames.Notifications.IntegrationTests.csproj" />
+    <Project Path="tests/FiapCloudGames.Notifications.Database.IntegrationTests/FiapCloudGames.Notifications.Database.IntegrationTests.csproj" />
+    <Project Path="tests/FiapCloudGames.Notifications.UnitTests/FiapCloudGames.Notifications.UnitTests.csproj" />
+  </Folder>
+</Solution>
