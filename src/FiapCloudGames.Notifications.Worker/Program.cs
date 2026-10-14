@@ -33,6 +33,7 @@ var rabbitPass = builder.Configuration["RabbitMq:Password"] ?? "guest";
 
 builder.Services.AddMassTransit(bus =>
 {
+    bus.AddConsumer<UserCreatedConsumer>();
     bus.AddConsumer<PaymentApprovedConsumer>();
     bus.AddConsumer<PaymentRejectedConsumer>();
     bus.AddConsumer<OrderCompletedConsumer>();
@@ -44,6 +45,15 @@ builder.Services.AddMassTransit(bus =>
         {
             h.Username(rabbitUser);
             h.Password(rabbitPass);
+        });
+
+        cfg.ReceiveEndpoint("notifications.user-created", e =>
+        {
+            e.ConfigureConsumer<UserCreatedConsumer>(context);
+            e.UseMessageRetry(r => r.Intervals(
+                TimeSpan.FromSeconds(1),
+                TimeSpan.FromSeconds(5),
+                TimeSpan.FromSeconds(15)));
         });
 
         cfg.ReceiveEndpoint("notifications.payment-approved", e =>

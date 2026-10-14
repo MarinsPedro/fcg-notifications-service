@@ -30,10 +30,11 @@ RabbitMq__Username=guest
 RabbitMq__Password=guest
 ```
 
-O Worker consome 4 filas no exchange `fcg.events`:
+O Worker consome 5 filas no exchange `fcg.events`:
 
 | Routing key | Fila |
 |---|---|
+| `identity.user-created.v1` | `notifications.user-created` |
 | `payments.payment-approved.v1` | `notifications.payment-approved` |
 | `payments.payment-rejected.v1` | `notifications.payment-rejected` |
 | `orders.order-completed.v1` | `notifications.order-completed` |

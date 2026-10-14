@@ -78,15 +78,16 @@ Authorization: Bearer <token-service>
 
 ## Eventos consumidos (Worker)
 
-O Worker consome 4 filas do RabbitMQ via MassTransit. Cada evento gera uma
+O Worker consome 5 filas do RabbitMQ via MassTransit. Cada evento gera uma
 notificação no banco e tenta o envio imediato.
 
-| Evento | Fila | Descrição |
-|---|---|---|
-| `PaymentApprovedV1` | `notifications.payment-approved` | Pagamento aprovado |
-| `PaymentRejectedV1` | `notifications.payment-rejected` | Pagamento rejeitado |
-| `OrderCompletedV1` | `notifications.order-completed` | Pedido concluído |
-| `OrderFailedV1` | `notifications.order-failed` | Pedido falhou |
+| Evento | Produtor | Fila | Descrição |
+|---|---|---|---|
+| `UserCreatedV1` | Identity | `notifications.user-created` | Cadastro de usuário (boas-vindas) |
+| `PaymentApprovedV1` | Payments | `notifications.payment-approved` | Pagamento aprovado |
+| `PaymentRejectedV1` | Payments | `notifications.payment-rejected` | Pagamento rejeitado |
+| `OrderCompletedV1` | Orders | `notifications.order-completed` | Pedido concluído |
+| `OrderFailedV1` | Orders | `notifications.order-failed` | Pedido falhou |
 
 ### Envelope dos eventos
 

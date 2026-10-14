@@ -26,8 +26,8 @@ Infrastructure ───────┘
 Diferente dos serviços puramente HTTP, o Notifications possui **dois workloads**:
 
 - **API** (`notifications-api`): endpoints HTTP para consulta e retry administrativo.
-- **Worker** (`notifications-worker`): BackgroundService que consome eventos do
-  RabbitMQ via MassTransit.
+- **Worker** (`notifications-worker`): BackgroundService que consome 5 filas do
+  RabbitMQ via MassTransit (boas-vindas, pagamento e pedido).
 
 Ambos ficam no mesmo repositório e compartilham Domain, Application e
 Infrastructure. O Worker e a API ficam no mesmo repositório conforme a regra:
