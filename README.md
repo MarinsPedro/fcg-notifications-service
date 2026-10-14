@@ -15,23 +15,31 @@ Este repositório é independente do monólito. Ele possui banco, migrations, pi
 
 ## Eventos consumidos
 
-| Evento | Produtor | Fila | Descrição |
+| Evento | Produtor | Fila | Template |
 |---|---|---|---|
-| `PaymentApprovedV1` | Payments | `notifications.payment-approved` | Pagamento aprovado |
-| `PaymentRejectedV1` | Payments | `notifications.payment-rejected` | Pagamento rejeitado |
-| `OrderCompletedV1` | Orders | `notifications.order-completed` | Pedido concluído |
-| `OrderFailedV1` | Orders | `notifications.order-failed` | Pedido falhou |
+| `PaymentApprovedV1` | Payments | `notifications.payment-approved` | `PaymentApproved.html` |
+| `PaymentRejectedV1` | Payments | `notifications.payment-rejected` | `PaymentRejected.html` |
+| `OrderCompletedV1` | Orders | `notifications.order-completed` | `OrderCompleted.html` |
+| `OrderFailedV1` | Orders | `notifications.order-failed` | `OrderFailed.html` |
+
+Cada evento gera uma notificação com corpo HTML renderizado a partir de um
+template com placeholders (`{{OrderId}}`, `{{Amount}}`, `{{GameName}}`,
+`{{Reason}}`). Os templates ficam como embedded resources no projeto Worker.
 
 ## Estrutura
 
 ```text
 src/
-  FiapCloudGames.Notifications.Api/             composition root e pipeline
+  FiapCloudGames.Notifications.Api/             composition root e pipeline HTTP
   FiapCloudGames.Notifications.Application/     casos de uso e portas técnicas
   FiapCloudGames.Notifications.Domain/          agregados e regras do domínio
   FiapCloudGames.Notifications.Infrastructure/  EF Core, repositories, sender e autenticação
   FiapCloudGames.Notifications.Presentation/    Controllers, Requests, Responses e mappings HTTP
   FiapCloudGames.Notifications.Migrations/      migrations e atualizador do banco
+  FiapCloudGames.Notifications.Worker/          consumers RabbitMQ via MassTransit
+    Consumers/                                  4 consumers (um por evento)
+    Events/                                     DTOs dos eventos consumidos
+    Templates/                                  templates HTML de notificação
 tests/
   FiapCloudGames.Notifications.ArchitectureTests/
   FiapCloudGames.Notifications.Database.IntegrationTests/
@@ -106,6 +114,7 @@ Isso sobe automaticamente:
 | RabbitMQ 3.13 | `fcg-notifications-rabbit` | `5672` (AMQP) / `15672` (Management) |
 | Migrations | `fcg-notifications-migrations` | — (executa e encerra) |
 | API | `fcg-notifications-api` | `5087` |
+| Worker | `fcg-notifications-worker` | — (consome filas RabbitMQ) |
 
 A senha padrão do banco é `DevPass123!`. O RabbitMQ usa `guest`/`guest`.
 
@@ -155,6 +164,12 @@ dotnet tool restore
 dotnet restore FiapCloudGames.Notifications.slnx
 dotnet run --project src/FiapCloudGames.Notifications.Migrations
 dotnet run --project src/FiapCloudGames.Notifications.Api
+```
+
+6. Em outro terminal, inicie o Worker:
+
+```powershell
+dotnet run --project src/FiapCloudGames.Notifications.Worker
 ```
 
 Em `Development`, o Swagger fica disponível em `http://localhost:5087/swagger`.

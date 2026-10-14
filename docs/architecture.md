@@ -19,6 +19,7 @@ Infrastructure ───────┘
 | Infrastructure | `FiapCloudGames.Notifications.Infrastructure` | EF Core, repositórios, sender, health checks |
 | Presentation | `FiapCloudGames.Notifications.Presentation` | Controllers, requests, responses e policies |
 | Migrations | `FiapCloudGames.Notifications.Migrations` | Migrations EF Core e runner |
+| Worker | `FiapCloudGames.Notifications.Worker` | Consumers RabbitMQ, event DTOs, templates HTML |
 
 ## Workloads
 
@@ -40,6 +41,7 @@ Infrastructure. O Worker e a API ficam no mesmo repositório conforme a regra:
 - **Presentation** referencia Application e Domain.
 - **Api** referencia todas as camadas para composição.
 - **Migrations** referencia Infrastructure para acessar o `DbContext`.
+- **Worker** referencia Infrastructure para acessar repositórios e services.
 
 Essas regras são verificadas automaticamente pelo projeto `ArchitectureTests`.
 
@@ -70,6 +72,14 @@ Essas regras são verificadas automaticamente pelo projeto `ArchitectureTests`.
 - `INotificationSender` define a porta técnica de envio.
 - `LogNotificationSender` é a implementação placeholder (simula via log).
 - Implementações reais (e-mail, push) substituem o placeholder por DI.
+
+### Templates de notificação (Worker)
+
+- 4 templates HTML em `Worker/Templates/`, um por tipo de evento.
+- Armazenados como embedded resources no assembly do Worker.
+- `NotificationTemplateRenderer` carrega o template e substitui placeholders
+  (`{{OrderId}}`, `{{Amount}}`, `{{GameName}}`, `{{Reason}}`).
+- Layout responsivo e compatível com clientes de e-mail (table-based).
 
 ## Configuração da solução
 

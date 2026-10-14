@@ -74,7 +74,7 @@ Authorization: Bearer <token-service>
 |---|---|
 | `200` | Retry executado com sucesso |
 | `404` | Notificação não encontrada |
-| `422` | Limite de tentativas atingido (máximo 3) |
+| `422` | Limite de tentativas atingido (máximo 5) |
 
 ## Eventos consumidos (Worker)
 

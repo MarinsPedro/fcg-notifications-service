@@ -57,7 +57,8 @@ conexão com PostgreSQL real.
 ## ArchitectureTests
 
 Falham quando uma camada interna referencia uma externa, controllers aparecem
-fora de Presentation, ou migrations fora do projeto Migrations.
+fora de Presentation, migrations fora do projeto Migrations, ou o Worker
+referencia camadas que não deveria.
 
 ## Execução local
 
