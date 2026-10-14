@@ -1,10 +1,16 @@
+using System.Net;
+using FiapCloudGames.Notifications.IntegrationTests.Support;
+
 namespace FiapCloudGames.Notifications.IntegrationTests.Host;
 
-public sealed class HealthEndpointTests
+public sealed class HealthEndpointTests(NotificationsApiFactory factory)
+    : IClassFixture<NotificationsApiFactory>
 {
     [Fact]
-    public void Placeholder_IntegrationTestsConfigured()
+    public async Task HealthLive_ReturnsOk()
     {
-        Assert.True(true);
+        using var client = factory.CreateClient();
+        using var response = await client.GetAsync("/health/live");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 }
