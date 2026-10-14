@@ -17,6 +17,7 @@ public sealed class ArchitectureRulesTests
         AssertProjectReferences("Presentation", "Application");
         AssertProjectReferences("Api", "Infrastructure", "Presentation");
         AssertProjectReferences("Migrations", "Infrastructure");
+        AssertProjectReferences("Worker", "Infrastructure");
     }
 
     [Fact]

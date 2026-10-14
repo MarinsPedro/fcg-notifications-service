@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+  <ItemGroup>
+    <ProjectReference Include="../FiapCloudGames.Notifications.Infrastructure/FiapCloudGames.Notifications.Infrastructure.csproj" />
+    <PackageReference Include="MassTransit.RabbitMQ" />
+  </ItemGroup>
+</Project>

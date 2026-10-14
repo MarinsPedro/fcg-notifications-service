@@ -6,6 +6,7 @@
     <Project Path="src/FiapCloudGames.Notifications.Infrastructure/FiapCloudGames.Notifications.Infrastructure.csproj" />
     <Project Path="src/FiapCloudGames.Notifications.Presentation/FiapCloudGames.Notifications.Presentation.csproj" />
     <Project Path="src/FiapCloudGames.Notifications.Migrations/FiapCloudGames.Notifications.Migrations.csproj" />
+    <Project Path="src/FiapCloudGames.Notifications.Worker/FiapCloudGames.Notifications.Worker.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/FiapCloudGames.Notifications.ArchitectureTests/FiapCloudGames.Notifications.ArchitectureTests.csproj" />

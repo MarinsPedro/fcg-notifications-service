@@ -9,6 +9,7 @@
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="FiapCloudGames.Notifications.Migrations" />
+    <InternalsVisibleTo Include="FiapCloudGames.Notifications.Worker" />
     <InternalsVisibleTo Include="FiapCloudGames.Notifications.Database.IntegrationTests" />
     <InternalsVisibleTo Include="FiapCloudGames.Notifications.IntegrationTests" />
   </ItemGroup>
