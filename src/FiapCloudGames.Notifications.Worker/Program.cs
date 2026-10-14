@@ -7,6 +7,7 @@ using FiapCloudGames.Notifications.Infrastructure.Persistence;
 using FiapCloudGames.Notifications.Infrastructure.Persistence.Repositories;
 using FiapCloudGames.Notifications.Worker.Consumers;
 using FiapCloudGames.Notifications.Worker.Events;
+using FiapCloudGames.Notifications.Worker.Templates;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,6 +24,7 @@ builder.Services.AddScoped<INotificationsUnitOfWork>(provider =>
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddSingleton<INotificationSender, LogNotificationSender>();
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<NotificationTemplateRenderer>();
 builder.Services.AddScoped<ProcessNotificationService>();
 
 var rabbitHost = builder.Configuration["RabbitMq:Host"] ?? "localhost";
