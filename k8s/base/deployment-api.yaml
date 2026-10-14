@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notifications-api
+  namespace: fcg
+  labels:
+    app: notifications-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notifications-api
+  template:
+    metadata:
+      labels:
+        app: notifications-api
+    spec:
+      containers:
+        - name: notifications-api
+          image: fcg-notifications:latest
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: notifications-config
+            - secretRef:
+                name: notifications-secret
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi

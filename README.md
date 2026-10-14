@@ -39,7 +39,7 @@ src/
   FiapCloudGames.Notifications.Presentation/    Controllers, Requests, Responses e mappings HTTP
   FiapCloudGames.Notifications.Migrations/      migrations e atualizador do banco
   FiapCloudGames.Notifications.Worker/          consumers RabbitMQ via MassTransit
-    Consumers/                                  4 consumers (um por evento)
+    Consumers/                                  5 consumers (um por evento)
     Events/                                     DTOs dos eventos consumidos
     Templates/                                  templates HTML de notificação
 tests/
@@ -52,6 +52,15 @@ docs/
   configuration.md
   endpoints.md
   testing.md
+k8s/
+  base/
+    namespace.yaml          namespace fcg
+    configmap.yaml          configurações não-sensíveis (JWT, RabbitMQ host)
+    secret.yaml             connection string e credenciais RabbitMQ
+    deployment-api.yaml     Deployment da API HTTP
+    deployment-worker.yaml  Deployment do Worker (consumers RabbitMQ)
+    service.yaml            Service ClusterIP (porta 80 → 8080)
+    kustomization.yaml      agregador dos recursos
 ```
 
 As regras e exemplos da estrutura estão em [docs/architecture.md](docs/architecture.md).
@@ -128,6 +137,36 @@ Para derrubar tudo e limpar os volumes:
 ```powershell
 docker compose down -v
 ```
+
+## Deploy em Kubernetes
+
+Os manifests ficam em `k8s/base/` e usam Kustomize (embutido no `kubectl`).
+
+1. Construa as imagens e carregue no cluster local (exemplo com Kind):
+
+```powershell
+docker build --target final --secret "id=nuget_config,src=$env:APPDATA\NuGet\NuGet.Config" -t fcg-notifications:latest .
+docker build --target worker --secret "id=nuget_config,src=$env:APPDATA\NuGet\NuGet.Config" -t fcg-notifications-worker:latest .
+kind load docker-image fcg-notifications:latest fcg-notifications-worker:latest
+```
+
+2. Antes de aplicar, edite `k8s/base/secret.yaml` com a connection string e
+   credenciais reais do RabbitMQ.
+
+3. Aplique os manifests:
+
+```powershell
+kubectl apply -k k8s/base/
+```
+
+4. Verifique se os Pods estão rodando:
+
+```powershell
+kubectl get pods -n fcg -l "app in (notifications-api, notifications-worker)"
+```
+
+Dentro do cluster, outros serviços acessam a API via `http://notifications-api:80`.
+O Worker consome as filas do RabbitMQ automaticamente via MassTransit.
 
 ## Execução local sem Docker
 
