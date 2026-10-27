@@ -81,13 +81,18 @@ Authorization: Bearer <token-service>
 O Worker consome 5 filas do RabbitMQ via MassTransit. Cada evento gera uma
 notificação no banco e tenta o envio imediato.
 
-| Evento | Produtor | Fila | Descrição |
-|---|---|---|---|
-| `UserCreatedV1` | Identity | `notifications.user-created` | Cadastro de usuário (boas-vindas) |
-| `PaymentApprovedV1` | Payments | `notifications.payment-approved` | Pagamento aprovado |
-| `PaymentRejectedV1` | Payments | `notifications.payment-rejected` | Pagamento rejeitado |
-| `OrderCompletedV1` | Orders | `notifications.order-completed` | Pedido concluído |
-| `OrderFailedV1` | Orders | `notifications.order-failed` | Pedido falhou |
+| Evento | Produtor | Exchange | Fila | Descrição |
+|---|---|---|---|---|
+| `UserCreatedV1` | Identity | `identity.user-created.v1` | `notifications.user-created` | Cadastro de usuário (boas-vindas) |
+| `PaymentApprovedV1` | Payments | `payments.payment-approved.v1` | `notifications.payment-approved` | Pagamento aprovado |
+| `PaymentRejectedV1` | Payments | `payments.payment-rejected.v1` | `notifications.payment-rejected` | Pagamento rejeitado |
+| `OrderCompletedV1` | Orders | `orders.order-completed.v1` | `notifications.order-completed` | Pedido concluído |
+| `OrderFailedV1` | Orders | `orders.order-failed.v1` | `notifications.order-failed` | Pedido falhou |
+
+Os nomes dos exchanges são explícitos (`ExchangeNames.cs`), no padrão
+`<produtor>.<evento>.v1`, e não dependem do namespace C# dos tipos. O produtor
+precisa publicar no mesmo exchange, e o tipo da mensagem precisa ser compatível
+com o do consumer.
 
 ### Envelope dos eventos
 

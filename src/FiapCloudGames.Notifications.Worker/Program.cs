@@ -47,6 +47,12 @@ builder.Services.AddMassTransit(bus =>
             h.Password(rabbitPass);
         });
 
+        cfg.Message<UserCreatedV1>(m => m.SetEntityName(ExchangeNames.UserCreated));
+        cfg.Message<PaymentApprovedV1>(m => m.SetEntityName(ExchangeNames.PaymentApproved));
+        cfg.Message<PaymentRejectedV1>(m => m.SetEntityName(ExchangeNames.PaymentRejected));
+        cfg.Message<OrderCompletedV1>(m => m.SetEntityName(ExchangeNames.OrderCompleted));
+        cfg.Message<OrderFailedV1>(m => m.SetEntityName(ExchangeNames.OrderFailed));
+
         cfg.ReceiveEndpoint("notifications.user-created", e =>
         {
             e.ConfigureConsumer<UserCreatedConsumer>(context);
