@@ -57,6 +57,11 @@ k8s/
     namespace.yaml          namespace fcg
     configmap.yaml          configurações não-sensíveis (JWT, RabbitMQ host)
     secret.yaml             connection string e credenciais RabbitMQ
+    db-secret.yaml          credenciais do PostgreSQL (iguais às do secret.yaml)
+    db-pvc.yaml             volume persistente do banco (1Gi)
+    db-deployment.yaml      Deployment do PostgreSQL 17 (notifications-db)
+    db-service.yaml         Service ClusterIP do banco (porta 5432)
+    migrations-job.yaml     Job que aplica as migrations e termina
     deployment-api.yaml     Deployment da API HTTP
     deployment-worker.yaml  Deployment do Worker (consumers RabbitMQ)
     service.yaml            Service ClusterIP (porta 80 → 8080)
@@ -147,7 +152,8 @@ Os manifests ficam em `k8s/base/` e usam Kustomize (embutido no `kubectl`).
 ```powershell
 docker build --target final --secret "id=nuget_config,src=$env:APPDATA\NuGet\NuGet.Config" -t fcg-notifications:latest .
 docker build --target worker --secret "id=nuget_config,src=$env:APPDATA\NuGet\NuGet.Config" -t fcg-notifications-worker:latest .
-kind load docker-image fcg-notifications:latest fcg-notifications-worker:latest
+docker build --target migrations --secret "id=nuget_config,src=$env:APPDATA\NuGet\NuGet.Config" -t fcg-notifications-migrations:latest .
+kind load docker-image fcg-notifications:latest fcg-notifications-worker:latest fcg-notifications-migrations:latest
 ```
 
 2. Antes de aplicar, edite `k8s/base/secret.yaml` com a connection string e
