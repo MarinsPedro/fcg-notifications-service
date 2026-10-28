@@ -84,6 +84,14 @@ O RabbitMQ e o Identity não fazem parte destes manifests: o ConfigMap espera
 Services chamados `rabbitmq` e `identity-api` no namespace `fcg`. Sem o
 RabbitMQ, o Worker não consegue consumir as filas.
 
+## Logs e rastreio
+
+Cada consumer do Worker abre um escopo de log com `MessageId`, `CorrelationId` e
+`ConversationId` da mensagem, quando o produtor os informa. Use o
+`CorrelationId` para seguir uma operação entre os serviços e o `MessageId` para
+achar a mensagem exata. O console do Worker imprime esses campos porque o
+`appsettings.json` define `Logging:Console:FormatterOptions:IncludeScopes=true`.
+
 ## Health checks
 
 - `/health/live` verifica se o processo HTTP está respondendo.

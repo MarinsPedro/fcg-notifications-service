@@ -1,5 +1,6 @@
 using FiapCloudGames.Notifications.Application.Features.Process;
 using FiapCloudGames.Notifications.Worker.Events;
+using FiapCloudGames.Notifications.Worker.Logging;
 using FiapCloudGames.Notifications.Worker.Templates;
 using MassTransit;
 using Microsoft.Extensions.Logging;
@@ -13,6 +14,8 @@ public sealed class OrderCompletedConsumer(
 {
     public async Task Consume(ConsumeContext<OrderCompletedV1> context)
     {
+        using var scope = logger.BeginMessageScope(context);
+
         logger.LogInformation(
             "Processando OrderCompletedV1 para pedido {OrderId}, usuário {UserId}.",
             context.Message.OrderId,

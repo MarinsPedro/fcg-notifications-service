@@ -1,5 +1,6 @@
 using FiapCloudGames.Identity.Contracts.Events.V1;
 using FiapCloudGames.Notifications.Application.Features.Process;
+using FiapCloudGames.Notifications.Worker.Logging;
 using FiapCloudGames.Notifications.Worker.Templates;
 using MassTransit;
 using Microsoft.Extensions.Logging;
@@ -13,6 +14,8 @@ public sealed class UserCreatedConsumer(
 {
     public async Task Consume(ConsumeContext<UserCreatedEvent> context)
     {
+        using var scope = logger.BeginMessageScope(context);
+
         logger.LogInformation(
             "Processando UserCreatedEvent para usuário {UserId} ({Email}).",
             context.Message.UserId,
