@@ -8,6 +8,7 @@ using FiapCloudGames.Notifications.Infrastructure.Persistence;
 using FiapCloudGames.Notifications.Infrastructure.Persistence.Repositories;
 using FiapCloudGames.Notifications.Worker.Consumers;
 using FiapCloudGames.Notifications.Worker.Events;
+using FiapCloudGames.Notifications.Worker.Messaging;
 using FiapCloudGames.Notifications.Worker.Templates;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
@@ -28,9 +29,7 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<NotificationTemplateRenderer>();
 builder.Services.AddScoped<ProcessNotificationService>();
 
-var rabbitHost = builder.Configuration["RabbitMq:Host"] ?? "localhost";
-var rabbitUser = builder.Configuration["RabbitMq:Username"] ?? "guest";
-var rabbitPass = builder.Configuration["RabbitMq:Password"] ?? "guest";
+var rabbit = RabbitMqSettings.From(builder.Configuration);
 
 builder.Services.AddMassTransit(bus =>
 {
@@ -42,10 +41,10 @@ builder.Services.AddMassTransit(bus =>
 
     bus.UsingRabbitMq((context, cfg) =>
     {
-        cfg.Host(rabbitHost, h =>
+        cfg.Host(rabbit.Host, rabbit.Port, rabbit.VirtualHost, h =>
         {
-            h.Username(rabbitUser);
-            h.Password(rabbitPass);
+            h.Username(rabbit.Username);
+            h.Password(rabbit.Password);
         });
 
         // Identity e Orders publicam com envelope do MassTransit, uma exchange por evento.

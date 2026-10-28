@@ -26,6 +26,8 @@ Authentication__Audience=notifications-api
 
 ```text
 RabbitMq__Host=localhost
+RabbitMq__Port=5672
+RabbitMq__VirtualHost=/
 RabbitMq__Username=guest
 RabbitMq__Password=guest
 ```
@@ -53,6 +55,8 @@ proposta a confirmar.
 | `Authentication__Authority` | URL do Identity Service | `http://localhost:5081` |
 | `Authentication__Audience` | Audience esperada nos tokens JWT | `notifications-api` |
 | `RabbitMq__Host` | Host do RabbitMQ | `localhost` |
+| `RabbitMq__Port` | Porta AMQP do RabbitMQ (opcional, padrão `5672`) | `5672` |
+| `RabbitMq__VirtualHost` | Virtual host do RabbitMQ (opcional, padrão `/`) | `/` |
 | `RabbitMq__Username` | Usuário do RabbitMQ | `guest` |
 | `RabbitMq__Password` | Senha do RabbitMQ | `guest` |
 | `ASPNETCORE_ENVIRONMENT` | Ambiente da aplicação | `Development` |
@@ -63,7 +67,7 @@ Em `k8s/base/` a configuração é separada em ConfigMap e Secrets:
 
 | Recurso | Conteúdo |
 |---|---|
-| `notifications-config` (ConfigMap) | `ASPNETCORE_ENVIRONMENT`, `Authentication__Authority` (`http://identity-api:8080`), `Authentication__Audience` e `RabbitMq__Host` (`rabbitmq`) |
+| `notifications-config` (ConfigMap) | `ASPNETCORE_ENVIRONMENT`, `Authentication__Authority` (`http://identity-api:8080`), `Authentication__Audience`, `RabbitMq__Host` (`rabbitmq`), `RabbitMq__Port` e `RabbitMq__VirtualHost` |
 | `notifications-secret` (Secret) | `ConnectionStrings__Database` e `RabbitMq__Username`/`RabbitMq__Password` |
 | `notifications-db-secret` (Secret) | `POSTGRES_DB`, `POSTGRES_USER` e `POSTGRES_PASSWORD`, usados só pelo contêiner do PostgreSQL |
 

@@ -8,3 +8,5 @@ data:
   Authentication__Authority: "http://identity-api:8080"
   Authentication__Audience: "notifications-api"
   RabbitMq__Host: "rabbitmq"
+  RabbitMq__Port: "5672"
+  RabbitMq__VirtualHost: "/"

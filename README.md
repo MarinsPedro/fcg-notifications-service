@@ -216,6 +216,8 @@ $env:Authentication__Audience = "notifications-api"
 
 ```powershell
 $env:RabbitMq__Host = "localhost"
+$env:RabbitMq__Port = "5672"         # opcional
+$env:RabbitMq__VirtualHost = "/"     # opcional
 $env:RabbitMq__Username = "guest"
 $env:RabbitMq__Password = "guest"
 ```
@@ -245,6 +247,8 @@ Em `Development`, o Swagger fica disponível em `http://localhost:5087/swagger`.
 | `Authentication__Authority` | URL do Identity Service (emissor dos tokens) | `http://localhost:5081` |
 | `Authentication__Audience` | Audience esperada nos tokens JWT | `notifications-api` |
 | `RabbitMq__Host` | Host do RabbitMQ | `localhost` |
+| `RabbitMq__Port` | Porta AMQP do RabbitMQ (opcional, padrão `5672`) | `5672` |
+| `RabbitMq__VirtualHost` | Virtual host do RabbitMQ (opcional, padrão `/`) | `/` |
 | `RabbitMq__Username` | Usuário do RabbitMQ | `guest` |
 | `RabbitMq__Password` | Senha do RabbitMQ | `guest` |
 | `ASPNETCORE_ENVIRONMENT` | Ambiente da aplicação | `Development` |
