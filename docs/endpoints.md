@@ -79,47 +79,67 @@ Authorization: Bearer <token-service>
 ## Eventos consumidos (Worker)
 
 O Worker consome 5 filas do RabbitMQ via MassTransit. Cada evento gera uma
-notificação no banco e tenta o envio imediato.
+notificação no banco e tenta o envio imediato. Cada produtor publica de um
+jeito, e o Notifications se adapta ao contrato publicado por ele.
 
-| Evento | Produtor | Exchange | Fila | Descrição |
-|---|---|---|---|---|
-| `UserCreatedV1` | Identity | `identity.user-created.v1` | `notifications.user-created` | Cadastro de usuário (boas-vindas) |
-| `PaymentApprovedV1` | Payments | `payments.payment-approved.v1` | `notifications.payment-approved` | Pagamento aprovado |
-| `PaymentRejectedV1` | Payments | `payments.payment-rejected.v1` | `notifications.payment-rejected` | Pagamento rejeitado |
-| `OrderCompletedV1` | Orders | `orders.order-completed.v1` | `notifications.order-completed` | Pedido concluído |
-| `OrderFailedV1` | Orders | `orders.order-failed.v1` | `notifications.order-failed` | Pedido falhou |
+| Evento no Notifications | Produtor | Exchange | Routing key | Fila | Formato |
+|---|---|---|---|---|---|
+| `UserCreatedEvent` | Identity | `identity.user-created.v1` | - | `notifications.user-created` | envelope do MassTransit |
+| `PaymentApprovedV1` | Payments (`PaymentPaidEventV1`) | `fcg.payments.events` (topic) | `payments.paid` | `notifications.payment-approved` | JSON puro |
+| `PaymentRejectedV1` | Payments (`PaymentFailedEventV1`) | `fcg.payments.events` (topic) | `payments.failed` | `notifications.payment-rejected` | JSON puro |
+| `OrderCompletedV1` | Orders (a confirmar) | `orders.order-completed.v1` | - | `notifications.order-completed` | envelope do MassTransit |
+| `OrderFailedV1` | Orders (a confirmar) | `orders.order-failed.v1` | - | `notifications.order-failed` | envelope do MassTransit |
 
-Os nomes dos exchanges são explícitos (`ExchangeNames.cs`), no padrão
-`<produtor>.<evento>.v1`, e não dependem do namespace C# dos tipos. O produtor
-precisa publicar no mesmo exchange, e o tipo da mensagem precisa ser compatível
-com o do consumer.
+Os nomes das exchanges e as routing keys ficam em `ExchangeNames.cs`.
 
-### Envelope dos eventos
+- **Identity:** o consumer usa uma cópia do contrato
+  (`Contracts/Identity/UserCreatedEvent.cs`) com o mesmo namespace e o mesmo
+  nome do tipo do Identity, porque o MassTransit casa a mensagem pelo tipo.
+  Campos: `eventId`, `userId`, `name`, `email` e `occurredAtUtc`.
+- **Payments:** publica JSON puro, sem envelope. As filas desligam a topologia
+  automática e se ligam à exchange `fcg.payments.events` à mão, uma routing key
+  por fila. Campos lidos: `paymentId`, `orderId`, `userId` e `amount` (aprovado);
+  `paymentId`, `orderId`, `userId` e `failureReason` (recusado). A deduplicação
+  usa o `MessageId` da mensagem, ou o `paymentId` quando ele não vier.
+- **Orders:** ainda não publica estes dois eventos. Os nomes seguem o padrão
+  `<produtor>.<evento>.v1` que o Orders usa e são uma proposta a confirmar.
+
+### Exemplos de mensagem
+
+Pagamento aprovado (`payments.paid`, JSON puro):
 
 ```json
 {
-  "messageId": "2ace1057-8815-4675-babe-a672928b328c",
-  "eventType": "PaymentApprovedV1",
-  "occurredAt": "2026-10-14T12:00:00Z",
-  "correlationId": "5ae87974-a227-4b97-9f20-3593efdad7ca",
-  "causationId": null,
-  "producer": "payments",
-  "payload": {
-    "orderId": "uuid",
-    "userId": "uuid",
-    "amount": 84.90
-  }
+  "paymentId": "uuid",
+  "orderId": "uuid",
+  "userId": "uuid",
+  "amount": 84.90,
+  "providerTransactionId": "tx-123",
+  "occurredAtUtc": "2026-10-27T12:00:00+00:00"
 }
 ```
 
-O `messageId` é usado como `ExternalEventId` para deduplicação. Eventos
-duplicados são ignorados sem erro.
+Pagamento recusado (`payments.failed`, JSON puro):
 
-## Respostas de erro comuns
+```json
+{
+  "paymentId": "uuid",
+  "orderId": "uuid",
+  "userId": "uuid",
+  "amount": 10.00,
+  "failureReason": "Cartão recusado",
+  "occurredAtUtc": "2026-10-27T12:00:00+00:00"
+}
+```
 
-| Status | Significado típico |
-|---|---|
-| `401 Unauthorized` | Token ausente, expirado ou inválido |
-| `403 Forbidden` | Token válido mas sem scope necessário |
-| `404 Not Found` | Notificação não encontrada |
-| `422 Unprocessable Entity` | Regra de negócio violada (ex: limite de retry) |
+Usuário criado (`identity.user-created.v1`, conteúdo da mensagem no envelope):
+
+```json
+{
+  "eventId": "uuid",
+  "userId": "uuid",
+  "name": "Maria Silva",
+  "email": "maria@example.com",
+  "occurredAtUtc": "2026-10-27T12:00:00+00:00"
+}
+```

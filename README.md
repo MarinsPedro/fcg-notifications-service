@@ -17,13 +17,13 @@ Este repositório é independente do monólito. Ele possui banco, migrations, pi
 
 | Evento | Produtor | Fila | Template |
 |---|---|---|---|
-| `UserCreatedV1` | Identity | `notifications.user-created` | `UserCreated.html` |
-| `PaymentApprovedV1` | Payments | `notifications.payment-approved` | `PaymentApproved.html` |
-| `PaymentRejectedV1` | Payments | `notifications.payment-rejected` | `PaymentRejected.html` |
+| `UserCreatedEvent` | Identity | `notifications.user-created` | `UserCreated.html` |
+| `PaymentApprovedV1` (`payments.paid`) | Payments | `notifications.payment-approved` | `PaymentApproved.html` |
+| `PaymentRejectedV1` (`payments.failed`) | Payments | `notifications.payment-rejected` | `PaymentRejected.html` |
 | `OrderCompletedV1` | Orders | `notifications.order-completed` | `OrderCompleted.html` |
 | `OrderFailedV1` | Orders | `notifications.order-failed` | `OrderFailed.html` |
 
-Cada evento gera uma notificação com corpo HTML renderizado a partir de um
+Exchanges, routing keys, formato das mensagens e exemplos estão em\n[docs/endpoints.md](docs/endpoints.md). Cada evento gera uma notificação com corpo HTML renderizado a partir de um
 template com placeholders (`{{UserName}}`, `{{Email}}`, `{{OrderId}}`,
 `{{Amount}}`, `{{GameName}}`, `{{Reason}}`). Os templates ficam como embedded
 resources no projeto Worker.
