@@ -85,7 +85,7 @@ As variáveis de ambiente e opções de produção estão em
 
 ### Building Blocks
 
-O pacote `FiapCloudGames.BuildingBlocks` versão `0.3.0` está disponível no
+O pacote `FiapCloudGames.BuildingBlocks` versão `0.2.2` está disponível no
 GitHub Packages como pacote privado. Este repositório inclui uma cópia local
 em `packages/` como fallback, configurada no `NuGet.Config`. O restore funciona
 sem autenticação no GitHub Packages enquanto o fallback estiver presente.
