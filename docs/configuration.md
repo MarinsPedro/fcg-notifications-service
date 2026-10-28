@@ -30,15 +30,20 @@ RabbitMq__Username=guest
 RabbitMq__Password=guest
 ```
 
-O Worker consome 5 filas no exchange `fcg.events`:
+O Worker consome 5 filas. Cada produtor publica de um jeito, e o Notifications
+se liga ao que ele publica (formatos e exemplos em [endpoints.md](endpoints.md)):
 
-| Routing key | Fila |
-|---|---|
-| `identity.user-created.v1` | `notifications.user-created` |
-| `payments.payment-approved.v1` | `notifications.payment-approved` |
-| `payments.payment-rejected.v1` | `notifications.payment-rejected` |
-| `orders.order-completed.v1` | `notifications.order-completed` |
-| `orders.order-failed.v1` | `notifications.order-failed` |
+| Fila | Exchange | Routing key | Formato |
+|---|---|---|---|
+| `notifications.user-created` | `identity.user-created.v1` | - | envelope do MassTransit |
+| `notifications.payment-approved` | `fcg.payments.events` (topic) | `payments.paid` | JSON puro |
+| `notifications.payment-rejected` | `fcg.payments.events` (topic) | `payments.failed` | JSON puro |
+| `notifications.order-completed` | `orders.order-completed.v1` | - | envelope do MassTransit |
+| `notifications.order-failed` | `orders.order-failed.v1` | - | envelope do MassTransit |
+
+Os nomes ficam em `ExchangeNames.cs`. O Orders ainda não publica os dois últimos
+eventos; os nomes seguem o padrão `<produtor>.<evento>.v1` que ele usa e são uma
+proposta a confirmar.
 
 ## Variáveis de ambiente
 
@@ -52,10 +57,38 @@ O Worker consome 5 filas no exchange `fcg.events`:
 | `RabbitMq__Password` | Senha do RabbitMQ | `guest` |
 | `ASPNETCORE_ENVIRONMENT` | Ambiente da aplicação | `Development` |
 
+## Kubernetes
+
+Em `k8s/base/` a configuração é separada em ConfigMap e Secrets:
+
+| Recurso | Conteúdo |
+|---|---|
+| `notifications-config` (ConfigMap) | `ASPNETCORE_ENVIRONMENT`, `Authentication__Authority` (`http://identity-api:8080`), `Authentication__Audience` e `RabbitMq__Host` (`rabbitmq`) |
+| `notifications-secret` (Secret) | `ConnectionStrings__Database` e `RabbitMq__Username`/`RabbitMq__Password` |
+| `notifications-db-secret` (Secret) | `POSTGRES_DB`, `POSTGRES_USER` e `POSTGRES_PASSWORD`, usados só pelo contêiner do PostgreSQL |
+
+Os dados do `notifications-db-secret` precisam ser iguais aos da connection
+string do `notifications-secret` (banco `fcg_notifications`, usuário
+`fcg_notifications_app` e a mesma senha). Se divergirem, a API, o Worker e as
+migrations não autenticam no banco.
+
+O banco roda como Deployment (`notifications-db`, PostgreSQL 17) com volume
+persistente de 1Gi (`notifications-db-data`), que exige uma StorageClass padrão
+no cluster. As tabelas são criadas pelo Job `notifications-migrations` (imagem
+`fcg-notifications-migrations`), que tenta até 10 vezes enquanto o banco sobe.
+
+A API e o Worker são Deployments separados (`notifications-api` e
+`notifications-worker`); só a API tem Service.
+
+O RabbitMQ e o Identity não fazem parte destes manifests: o ConfigMap espera
+Services chamados `rabbitmq` e `identity-api` no namespace `fcg`. Sem o
+RabbitMQ, o Worker não consegue consumir as filas.
+
 ## Health checks
 
 - `/health/live` verifica se o processo HTTP está respondendo.
 - `/health/ready` verifica se o PostgreSQL pode ser acessado.
+- O Worker não expõe health check HTTP.
 
 ## Produção
 

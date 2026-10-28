@@ -156,23 +156,39 @@ docker build --target migrations --secret "id=nuget_config,src=$env:APPDATA\NuGe
 kind load docker-image fcg-notifications:latest fcg-notifications-worker:latest fcg-notifications-migrations:latest
 ```
 
-2. Antes de aplicar, edite `k8s/base/secret.yaml` com a connection string e
-   credenciais reais do RabbitMQ.
+2. Antes de aplicar, edite `k8s/base/secret.yaml` (connection string e
+   credenciais do RabbitMQ) e `k8s/base/db-secret.yaml` (credenciais do
+   PostgreSQL). A senha do banco precisa ser a mesma nos dois arquivos.
 
-3. Aplique os manifests:
+3. Aplique os manifests. Além da API e do Worker, eles criam o banco
+   (`notifications-db`, com volume persistente) e o Job `notifications-migrations`,
+   que cria as tabelas:
 
 ```powershell
 kubectl apply -k k8s/base/
 ```
 
-4. Verifique se os Pods estão rodando:
+4. Verifique os recursos:
 
 ```powershell
-kubectl get pods -n fcg -l "app in (notifications-api, notifications-worker)"
+kubectl get pods,jobs -n fcg -l "app in (notifications-api, notifications-worker, notifications-db, notifications-migrations)"
+```
+
+Devem aparecer `notifications-db`, `notifications-api` e `notifications-worker`
+em `Running` e o Job `notifications-migrations` em `Completed`. Para ver o
+resultado das migrations:
+
+```powershell
+kubectl logs -n fcg job/notifications-migrations
 ```
 
 Dentro do cluster, outros serviços acessam a API via `http://notifications-api:80`.
 O Worker consome as filas do RabbitMQ automaticamente via MassTransit.
+
+O RabbitMQ e o Identity não fazem parte destes manifests: o ConfigMap espera
+Services chamados `rabbitmq` e `identity-api` no namespace `fcg`. Sem o
+RabbitMQ, o Worker não consome as filas. Veja
+[docs/configuration.md](docs/configuration.md) e [docs/endpoints.md](docs/endpoints.md).
 
 ## Execução local sem Docker
 
