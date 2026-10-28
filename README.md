@@ -132,6 +132,10 @@ Isso sobe automaticamente:
 | API | `fcg-notifications-api` | `5087` |
 | Worker | `fcg-notifications-worker` | — (consome filas RabbitMQ) |
 
+O Worker também expõe `/health/live` e `/health/ready` na porta 8080 do
+contêiner, usados pelos probes do Kubernetes (veja
+[docs/configuration.md](docs/configuration.md)). O Compose não publica essa porta.
+
 A senha padrão do banco é `DevPass123!`. O RabbitMQ usa `guest`/`guest`.
 
 Após subir, o Swagger fica disponível em `http://localhost:5087/swagger` e o

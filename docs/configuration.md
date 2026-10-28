@@ -100,7 +100,11 @@ achar a mensagem exata. O console do Worker imprime esses campos porque o
 
 - `/health/live` verifica se o processo HTTP está respondendo.
 - `/health/ready` verifica se o PostgreSQL pode ser acessado.
-- O Worker não expõe health check HTTP.
+- O Worker também expõe `/health/live` e `/health/ready` na porta 8080 do
+  contêiner. O `ready` verifica o PostgreSQL e a conexão com o RabbitMQ; o
+  `live` só confirma que o processo responde. Os probes do Kubernetes em
+  `deployment-worker.yaml` usam esses endpoints. Localmente, defina
+  `ASPNETCORE_URLS` (por exemplo `http://localhost:5090`) para escolher a porta.
 
 ## Produção
 

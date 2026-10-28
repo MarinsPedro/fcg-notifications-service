@@ -4,16 +4,19 @@ using FiapCloudGames.Notifications.Application.Abstractions.Persistence;
 using FiapCloudGames.Notifications.Application.Features.Process;
 using FiapCloudGames.Notifications.Domain.Notifications;
 using FiapCloudGames.Notifications.Infrastructure.Delivery;
+using FiapCloudGames.Notifications.Infrastructure.Health;
 using FiapCloudGames.Notifications.Infrastructure.Persistence;
 using FiapCloudGames.Notifications.Infrastructure.Persistence.Repositories;
 using FiapCloudGames.Notifications.Worker.Consumers;
 using FiapCloudGames.Notifications.Worker.Events;
+using FiapCloudGames.Notifications.Worker.Health;
 using FiapCloudGames.Notifications.Worker.Messaging;
 using FiapCloudGames.Notifications.Worker.Templates;
 using MassTransit;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 
-var builder = Host.CreateApplicationBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 
 var connectionString = builder.Configuration.GetConnectionString("Database")
     ?? throw new InvalidOperationException(
@@ -28,6 +31,12 @@ builder.Services.AddSingleton<INotificationSender, LogNotificationSender>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<NotificationTemplateRenderer>();
 builder.Services.AddScoped<ProcessNotificationService>();
+
+// O MassTransit registra o check do barramento (RabbitMQ) com a tag "ready".
+builder.Services.AddHealthChecks()
+    .AddCheck<NotificationsDatabaseHealthCheck>(
+        "notifications-database",
+        tags: [WorkerHealthExtensions.ReadyTag]);
 
 var rabbit = RabbitMqSettings.From(builder.Configuration);
 
@@ -115,5 +124,6 @@ builder.Services.AddMassTransit(bus =>
     });
 });
 
-var host = builder.Build();
-await host.RunAsync();
+var app = builder.Build();
+app.MapWorkerHealthEndpoints();
+await app.RunAsync();

@@ -5,7 +5,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace FiapCloudGames.Notifications.Infrastructure.Health;
 
-internal sealed class NotificationsDatabaseHealthCheck(
+public sealed class NotificationsDatabaseHealthCheck(
     IServiceScopeFactory scopeFactory) : IHealthCheck
 {
     public async Task<HealthCheckResult> CheckHealthAsync(
