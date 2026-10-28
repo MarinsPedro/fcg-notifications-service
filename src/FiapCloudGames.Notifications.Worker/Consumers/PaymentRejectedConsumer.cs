@@ -21,12 +21,12 @@ public sealed class PaymentRejectedConsumer(
         var body = templates.Render("PaymentRejected", new Dictionary<string, string>
         {
             ["OrderId"] = context.Message.OrderId.ToString(),
-            ["Reason"] = context.Message.Reason
+            ["Reason"] = context.Message.FailureReason
         });
 
         var input = new ProcessNotificationInput(
             EventType: nameof(PaymentRejectedV1),
-            EventId: context.MessageId ?? Guid.NewGuid(),
+            EventId: context.MessageId ?? context.Message.PaymentId,
             RecipientUserId: context.Message.UserId,
             Subject: "Pagamento não aprovado",
             Body: body);

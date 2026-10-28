@@ -47,9 +47,8 @@ builder.Services.AddMassTransit(bus =>
             h.Password(rabbitPass);
         });
 
+        // Identity e Orders publicam com envelope do MassTransit, uma exchange por evento.
         cfg.Message<UserCreatedV1>(m => m.SetEntityName(ExchangeNames.UserCreated));
-        cfg.Message<PaymentApprovedV1>(m => m.SetEntityName(ExchangeNames.PaymentApproved));
-        cfg.Message<PaymentRejectedV1>(m => m.SetEntityName(ExchangeNames.PaymentRejected));
         cfg.Message<OrderCompletedV1>(m => m.SetEntityName(ExchangeNames.OrderCompleted));
         cfg.Message<OrderFailedV1>(m => m.SetEntityName(ExchangeNames.OrderFailed));
 
@@ -62,8 +61,17 @@ builder.Services.AddMassTransit(bus =>
                 TimeSpan.FromSeconds(15)));
         });
 
+        // O Payments publica JSON puro (sem envelope) em uma exchange topic única,
+        // separando os eventos por routing key. Cada fila liga a sua key à mão.
         cfg.ReceiveEndpoint("notifications.payment-approved", e =>
         {
+            e.ConfigureConsumeTopology = false;
+            e.UseRawJsonDeserializer(RawSerializerOptions.All, isDefault: true);
+            e.Bind(ExchangeNames.PaymentsEvents, x =>
+            {
+                x.ExchangeType = "topic";
+                x.RoutingKey = ExchangeNames.PaymentPaidRoutingKey;
+            });
             e.ConfigureConsumer<PaymentApprovedConsumer>(context);
             e.UseMessageRetry(r => r.Intervals(
                 TimeSpan.FromSeconds(1),
@@ -73,6 +81,13 @@ builder.Services.AddMassTransit(bus =>
 
         cfg.ReceiveEndpoint("notifications.payment-rejected", e =>
         {
+            e.ConfigureConsumeTopology = false;
+            e.UseRawJsonDeserializer(RawSerializerOptions.All, isDefault: true);
+            e.Bind(ExchangeNames.PaymentsEvents, x =>
+            {
+                x.ExchangeType = "topic";
+                x.RoutingKey = ExchangeNames.PaymentFailedRoutingKey;
+            });
             e.ConfigureConsumer<PaymentRejectedConsumer>(context);
             e.UseMessageRetry(r => r.Intervals(
                 TimeSpan.FromSeconds(1),

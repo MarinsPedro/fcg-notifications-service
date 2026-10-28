@@ -26,7 +26,7 @@ public sealed class PaymentApprovedConsumer(
 
         var input = new ProcessNotificationInput(
             EventType: nameof(PaymentApprovedV1),
-            EventId: context.MessageId ?? Guid.NewGuid(),
+            EventId: context.MessageId ?? context.Message.PaymentId,
             RecipientUserId: context.Message.UserId,
             Subject: "Pagamento aprovado",
             Body: body);

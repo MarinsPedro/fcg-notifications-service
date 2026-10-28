@@ -7,6 +7,7 @@
     <Using Include="Xunit" />
     <ProjectReference Include="../../src/FiapCloudGames.Notifications.Application/FiapCloudGames.Notifications.Application.csproj" />
     <ProjectReference Include="../../src/FiapCloudGames.Notifications.Domain/FiapCloudGames.Notifications.Domain.csproj" />
+    <ProjectReference Include="../../src/FiapCloudGames.Notifications.Worker/FiapCloudGames.Notifications.Worker.csproj" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio">
