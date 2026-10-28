@@ -158,7 +158,9 @@ kind load docker-image fcg-notifications:latest fcg-notifications-worker:latest 
 
 2. Antes de aplicar, edite `k8s/base/secret.yaml` (connection string e
    credenciais do RabbitMQ) e `k8s/base/db-secret.yaml` (credenciais do
-   PostgreSQL). A senha do banco precisa ser a mesma nos dois arquivos.
+   PostgreSQL). A senha do banco precisa ser a mesma nos dois arquivos. As
+   senhas que vêm nesses arquivos são valores de estudo, só para o cluster
+   local; em qualquer outro ambiente, substitua-as e não as versione.
 
 3. Aplique os manifests. Além da API e do Worker, eles criam o banco
    (`notifications-db`, com volume persistente) e o Job `notifications-migrations`,
