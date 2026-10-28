@@ -1,3 +1,4 @@
+using FiapCloudGames.Identity.Contracts.Events.V1;
 using FiapCloudGames.Notifications.Application.Abstractions.Delivery;
 using FiapCloudGames.Notifications.Application.Abstractions.Persistence;
 using FiapCloudGames.Notifications.Application.Features.Process;
@@ -48,7 +49,7 @@ builder.Services.AddMassTransit(bus =>
         });
 
         // Identity e Orders publicam com envelope do MassTransit, uma exchange por evento.
-        cfg.Message<UserCreatedV1>(m => m.SetEntityName(ExchangeNames.UserCreated));
+        cfg.Message<UserCreatedEvent>(m => m.SetEntityName(ExchangeNames.UserCreated));
         cfg.Message<OrderCompletedV1>(m => m.SetEntityName(ExchangeNames.OrderCompleted));
         cfg.Message<OrderFailedV1>(m => m.SetEntityName(ExchangeNames.OrderFailed));
 

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using FiapCloudGames.Identity.Contracts.Events.V1;
 using FiapCloudGames.Notifications.Worker.Events;
 
 namespace FiapCloudGames.Notifications.UnitTests.Messaging;
@@ -59,6 +60,39 @@ public sealed class EventContractsTests
         Assert.NotNull(message);
         Assert.Equal(paymentId, message.PaymentId);
         Assert.Equal("Cartão recusado", message.FailureReason);
+    }
+
+    [Fact]
+    public void UserCreatedJson_MapsNameToUserCreatedEvent()
+    {
+        var eventId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var json = $$"""
+            {
+              "eventId": "{{eventId}}",
+              "userId": "{{userId}}",
+              "name": "Maria Silva",
+              "email": "maria@example.com",
+              "occurredAtUtc": "2026-10-27T12:00:00+00:00"
+            }
+            """;
+
+        var message = JsonSerializer.Deserialize<UserCreatedEvent>(json, Json);
+
+        Assert.NotNull(message);
+        Assert.Equal(eventId, message.EventId);
+        Assert.Equal(userId, message.UserId);
+        Assert.Equal("Maria Silva", message.Name);
+        Assert.Equal("maria@example.com", message.Email);
+    }
+
+    [Fact]
+    public void UserCreatedEvent_KeepsTheNamespaceAndNameOfTheIdentityContract()
+    {
+        // O MassTransit casa a mensagem pelo namespace e pelo nome do tipo.
+        Assert.Equal(
+            "FiapCloudGames.Identity.Contracts.Events.V1.UserCreatedEvent",
+            typeof(UserCreatedEvent).FullName);
     }
 
     [Fact]
