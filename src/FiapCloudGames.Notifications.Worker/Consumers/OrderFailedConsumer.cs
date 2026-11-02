@@ -10,14 +10,14 @@ namespace FiapCloudGames.Notifications.Worker.Consumers;
 public sealed class OrderFailedConsumer(
     ProcessNotificationService service,
     NotificationTemplateRenderer templates,
-    ILogger<OrderFailedConsumer> logger) : IConsumer<OrderFailedV1>
+    ILogger<OrderFailedConsumer> logger) : IConsumer<OrderFailedEventV1>
 {
-    public async Task Consume(ConsumeContext<OrderFailedV1> context)
+    public async Task Consume(ConsumeContext<OrderFailedEventV1> context)
     {
         using var scope = logger.BeginMessageScope(context);
 
         logger.LogInformation(
-            "Processando OrderFailedV1 para pedido {OrderId}, usuário {UserId}.",
+            "Processando OrderFailedEventV1 para pedido {OrderId}, usuário {UserId}.",
             context.Message.OrderId,
             context.Message.UserId);
 
@@ -28,8 +28,8 @@ public sealed class OrderFailedConsumer(
         });
 
         var input = new ProcessNotificationInput(
-            EventType: nameof(OrderFailedV1),
-            EventId: context.MessageId ?? Guid.NewGuid(),
+            EventType: nameof(OrderFailedEventV1),
+            EventId: context.Message.EventId,
             RecipientUserId: context.Message.UserId,
             Subject: "Pedido não concluído",
             Body: body);

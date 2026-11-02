@@ -27,7 +27,9 @@ public sealed class Notification
         EventId = eventId != Guid.Empty
             ? eventId
             : throw new DomainRuleViolationException("O identificador do evento é obrigatório.");
-        RecipientUserId = recipientUserId;
+        RecipientUserId = recipientUserId != Guid.Empty
+            ? recipientUserId
+            : throw new DomainRuleViolationException("O identificador do destinatário é obrigatório.");
         Channel = channel is not NotificationChannel.Undefined && Enum.IsDefined(channel)
             ? channel
             : throw new DomainRuleViolationException("O canal de notificação é inválido.");
@@ -70,19 +72,15 @@ public sealed class Notification
 
     public void MarkSent(DateTimeOffset nowUtc)
     {
-        Attempts++;
-        LastAttemptAtUtc = nowUtc;
-        Status = NotificationStatus.Sent;
+        CompleteAttempt(NotificationStatus.Sent, nowUtc);
     }
 
     public void MarkFailed(DateTimeOffset nowUtc)
     {
-        Attempts++;
-        LastAttemptAtUtc = nowUtc;
-        Status = NotificationStatus.Failed;
+        CompleteAttempt(NotificationStatus.Failed, nowUtc);
     }
 
-    public void ResetForRetry()
+    public void PrepareRetry()
     {
         if (!CanRetry)
         {
@@ -91,5 +89,24 @@ public sealed class Notification
         }
 
         Status = NotificationStatus.Pending;
+    }
+
+    private void CompleteAttempt(NotificationStatus result, DateTimeOffset nowUtc)
+    {
+        if (Status != NotificationStatus.Pending)
+        {
+            throw new DomainRuleViolationException(
+                "Somente uma notificação pendente pode concluir uma tentativa de envio.");
+        }
+
+        if (nowUtc == default || nowUtc.Offset != TimeSpan.Zero || nowUtc < CreatedAtUtc)
+        {
+            throw new DomainRuleViolationException(
+                "A data da tentativa deve estar em UTC e não pode ser anterior à criação.");
+        }
+
+        Attempts++;
+        LastAttemptAtUtc = nowUtc;
+        Status = result;
     }
 }

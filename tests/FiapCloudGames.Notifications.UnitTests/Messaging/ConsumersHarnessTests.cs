@@ -1,4 +1,3 @@
-using FiapCloudGames.Identity.Contracts.Events.V1;
 using FiapCloudGames.Notifications.Application.Abstractions.Delivery;
 using FiapCloudGames.Notifications.Application.Abstractions.Persistence;
 using FiapCloudGames.Notifications.Application.Features.Process;
@@ -21,14 +20,12 @@ public sealed class ConsumersHarnessTests
         var eventId = Guid.NewGuid();
 
         await using var host = await StartAsync();
-        await host.Harness.Bus.Publish(new UserCreatedEvent
-        {
-            EventId = eventId,
-            UserId = userId,
-            Name = "Alessandra",
-            Email = "alessandra@example.com",
-            OccurredAtUtc = DateTimeOffset.UtcNow
-        });
+        await host.Harness.Bus.Publish(new UserCreatedEvent(
+            eventId,
+            userId,
+            "Alessandra",
+            "alessandra@example.com",
+            DateTimeOffset.UtcNow));
 
         Assert.True(await host.Harness.Consumed.Any<UserCreatedEvent>());
 
@@ -44,14 +41,12 @@ public sealed class ConsumersHarnessTests
     public async Task UserCreated_WithSameEventIdTwice_CreatesOnlyOneNotification()
     {
         var eventId = Guid.NewGuid();
-        var message = new UserCreatedEvent
-        {
-            EventId = eventId,
-            UserId = Guid.NewGuid(),
-            Name = "Alessandra",
-            Email = "alessandra@example.com",
-            OccurredAtUtc = DateTimeOffset.UtcNow
-        };
+        var message = new UserCreatedEvent(
+            eventId,
+            Guid.NewGuid(),
+            "Alessandra",
+            "alessandra@example.com",
+            DateTimeOffset.UtcNow);
 
         await using var host = await StartAsync();
         await host.Harness.Bus.Publish(message);
@@ -63,25 +58,25 @@ public sealed class ConsumersHarnessTests
     }
 
     [Fact]
-    public async Task PaymentApproved_UsesPaymentIdAsEventIdWhenMessageHasNoId()
+    public async Task PaymentApproved_UsesProducerEventId()
     {
-        var paymentId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
         var orderId = Guid.NewGuid();
         var userId = Guid.NewGuid();
 
         await using var host = await StartAsync();
-        await host.Harness.Bus.Publish(new PaymentApprovedV1
-        {
-            PaymentId = paymentId,
-            OrderId = orderId,
-            UserId = userId,
-            Amount = 59.9m
-        });
+        await host.Harness.Bus.Publish(new PaymentApprovedEventV1(
+            eventId,
+            orderId,
+            userId,
+            59.9m,
+            DateTimeOffset.UtcNow));
 
-        Assert.True(await host.Harness.Consumed.Any<PaymentApprovedV1>());
+        Assert.True(await host.Harness.Consumed.Any<PaymentApprovedEventV1>());
 
         var notification = Assert.Single(host.Repository.Items);
-        Assert.Equal(nameof(PaymentApprovedV1), notification.EventType);
+        Assert.Equal(nameof(PaymentApprovedEventV1), notification.EventType);
+        Assert.Equal(eventId, notification.EventId);
         Assert.Equal(userId, notification.RecipientUserId);
         Assert.Equal("Pagamento aprovado", notification.Subject);
         Assert.Contains(orderId.ToString(), notification.Body);
@@ -93,15 +88,15 @@ public sealed class ConsumersHarnessTests
         var orderId = Guid.NewGuid();
 
         await using var host = await StartAsync();
-        await host.Harness.Bus.Publish(new PaymentRejectedV1
-        {
-            PaymentId = Guid.NewGuid(),
-            OrderId = orderId,
-            UserId = Guid.NewGuid(),
-            FailureReason = "Saldo insuficiente"
-        });
+        await host.Harness.Bus.Publish(new PaymentRejectedEventV1(
+            Guid.NewGuid(),
+            orderId,
+            Guid.NewGuid(),
+            59.9m,
+            "Saldo insuficiente",
+            DateTimeOffset.UtcNow));
 
-        Assert.True(await host.Harness.Consumed.Any<PaymentRejectedV1>());
+        Assert.True(await host.Harness.Consumed.Any<PaymentRejectedEventV1>());
 
         var notification = Assert.Single(host.Repository.Items);
         Assert.Equal("Pagamento não aprovado", notification.Subject);
@@ -110,53 +105,54 @@ public sealed class ConsumersHarnessTests
     }
 
     [Fact]
-    public async Task OrderCompleted_IncludesGameNameInBody()
+    public async Task OrderCompleted_IncludesOrderIdInBody()
     {
+        var orderId = Guid.NewGuid();
         await using var host = await StartAsync();
-        await host.Harness.Bus.Publish(new OrderCompletedV1
-        {
-            OrderId = Guid.NewGuid(),
-            UserId = Guid.NewGuid(),
-            GameName = "Hollow Knight"
-        });
+        await host.Harness.Bus.Publish(new OrderCompletedEventV1(
+            Guid.NewGuid(),
+            orderId,
+            Guid.NewGuid(),
+            DateTimeOffset.UtcNow));
 
-        Assert.True(await host.Harness.Consumed.Any<OrderCompletedV1>());
+        Assert.True(await host.Harness.Consumed.Any<OrderCompletedEventV1>());
 
         var notification = Assert.Single(host.Repository.Items);
         Assert.Equal("Pedido concluído", notification.Subject);
-        Assert.Contains("Hollow Knight", notification.Body);
+        Assert.Contains(orderId.ToString(), notification.Body);
     }
 
     [Fact]
     public async Task OrderFailed_IncludesReasonInBody()
     {
         await using var host = await StartAsync();
-        await host.Harness.Bus.Publish(new OrderFailedV1
-        {
-            OrderId = Guid.NewGuid(),
-            UserId = Guid.NewGuid(),
-            Reason = "Jogo indisponível"
-        });
+        await host.Harness.Bus.Publish(new OrderFailedEventV1(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "Jogo indisponível",
+            DateTimeOffset.UtcNow));
 
-        Assert.True(await host.Harness.Consumed.Any<OrderFailedV1>());
+        Assert.True(await host.Harness.Consumed.Any<OrderFailedEventV1>());
 
         var notification = Assert.Single(host.Repository.Items);
         Assert.Equal("Pedido não concluído", notification.Subject);
-        Assert.Contains("Jogo indisponível", notification.Body);
+        Assert.Contains(
+            "Jogo indisponível",
+            System.Net.WebUtility.HtmlDecode(notification.Body));
     }
 
     [Fact]
     public async Task SenderFailure_MarksNotificationAsFailed()
     {
         await using var host = await StartAsync(senderResult: false);
-        await host.Harness.Bus.Publish(new OrderCompletedV1
-        {
-            OrderId = Guid.NewGuid(),
-            UserId = Guid.NewGuid(),
-            GameName = "Celeste"
-        });
+        await host.Harness.Bus.Publish(new OrderCompletedEventV1(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            DateTimeOffset.UtcNow));
 
-        Assert.True(await host.Harness.Consumed.Any<OrderCompletedV1>());
+        Assert.True(await host.Harness.Consumed.Any<OrderCompletedEventV1>());
 
         var notification = Assert.Single(host.Repository.Items);
         Assert.Equal(NotificationStatus.Failed, notification.Status);
@@ -239,8 +235,10 @@ public sealed class ConsumersHarnessTests
         public Task<Notification?> FindByIdAsync(Guid id, CancellationToken cancellationToken) =>
             Task.FromResult(_items.FirstOrDefault(n => n.Id == id));
 
-        public Task<bool> ExistsByEventIdAsync(Guid eventId, CancellationToken cancellationToken) =>
-            Task.FromResult(_items.Any(n => n.EventId == eventId));
+        public Task<Notification?> FindByEventIdAsync(
+            Guid eventId,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(_items.FirstOrDefault(notification => notification.EventId == eventId));
 
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken) => Task.FromResult(0);
     }

@@ -1,5 +1,5 @@
-using FiapCloudGames.Identity.Contracts.Events.V1;
 using FiapCloudGames.Notifications.Application.Features.Process;
+using FiapCloudGames.Notifications.Worker.Events;
 using FiapCloudGames.Notifications.Worker.Logging;
 using FiapCloudGames.Notifications.Worker.Templates;
 using MassTransit;

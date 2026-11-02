@@ -10,26 +10,26 @@ namespace FiapCloudGames.Notifications.Worker.Consumers;
 public sealed class PaymentRejectedConsumer(
     ProcessNotificationService service,
     NotificationTemplateRenderer templates,
-    ILogger<PaymentRejectedConsumer> logger) : IConsumer<PaymentRejectedV1>
+    ILogger<PaymentRejectedConsumer> logger) : IConsumer<PaymentRejectedEventV1>
 {
-    public async Task Consume(ConsumeContext<PaymentRejectedV1> context)
+    public async Task Consume(ConsumeContext<PaymentRejectedEventV1> context)
     {
         using var scope = logger.BeginMessageScope(context);
 
         logger.LogInformation(
-            "Processando PaymentRejectedV1 para pedido {OrderId}, usuário {UserId}.",
+            "Processando PaymentRejectedEventV1 para pedido {OrderId}, usuário {UserId}.",
             context.Message.OrderId,
             context.Message.UserId);
 
         var body = templates.Render("PaymentRejected", new Dictionary<string, string>
         {
             ["OrderId"] = context.Message.OrderId.ToString(),
-            ["Reason"] = context.Message.FailureReason
+            ["Reason"] = context.Message.RejectionReason
         });
 
         var input = new ProcessNotificationInput(
-            EventType: nameof(PaymentRejectedV1),
-            EventId: context.MessageId ?? context.Message.PaymentId,
+            EventType: nameof(PaymentRejectedEventV1),
+            EventId: context.Message.EventId,
             RecipientUserId: context.Message.UserId,
             Subject: "Pagamento não aprovado",
             Body: body);

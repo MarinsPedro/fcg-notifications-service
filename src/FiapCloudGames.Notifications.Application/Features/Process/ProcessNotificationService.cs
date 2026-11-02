@@ -1,5 +1,7 @@
+using FiapCloudGames.BuildingBlocks.Exceptions;
 using FiapCloudGames.Notifications.Application.Abstractions.Delivery;
 using FiapCloudGames.Notifications.Application.Abstractions.Persistence;
+using FiapCloudGames.Notifications.Domain.Common;
 using FiapCloudGames.Notifications.Domain.Notifications;
 using Microsoft.Extensions.Logging;
 
@@ -16,7 +18,11 @@ public sealed class ProcessNotificationService(
         ProcessNotificationInput input,
         CancellationToken cancellationToken)
     {
-        if (await notifications.ExistsByEventIdAsync(input.EventId, cancellationToken))
+        var notification = await notifications.FindByEventIdAsync(
+            input.EventId,
+            cancellationToken);
+
+        if (notification is not null && notification.Status != NotificationStatus.Pending)
         {
             logger.LogInformation(
                 "Notificação para evento {EventId} já foi processada. Ignorando duplicata.",
@@ -24,16 +30,33 @@ public sealed class ProcessNotificationService(
             return;
         }
 
-        var notification = Notification.Create(
-            input.EventType,
-            input.EventId,
-            input.RecipientUserId,
-            NotificationChannel.Email,
-            input.Subject,
-            input.Body,
-            clock.GetUtcNow());
+        if (notification is null)
+        {
+            try
+            {
+                notification = Notification.Create(
+                    input.EventType,
+                    input.EventId,
+                    input.RecipientUserId,
+                    NotificationChannel.Email,
+                    input.Subject,
+                    input.Body,
+                    clock.GetUtcNow());
+            }
+            catch (DomainRuleViolationException exception)
+            {
+                throw AppException.Validation(exception.Message);
+            }
 
-        await notifications.AddAsync(notification, cancellationToken);
+            await notifications.AddAsync(notification, cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        else
+        {
+            logger.LogInformation(
+                "Retomando envio pendente da notificação do evento {EventId}.",
+                input.EventId);
+        }
 
         var sent = await sender.SendAsync(
             notification.Channel,

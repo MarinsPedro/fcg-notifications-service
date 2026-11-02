@@ -10,26 +10,28 @@ namespace FiapCloudGames.Notifications.Worker.Consumers;
 public sealed class PaymentApprovedConsumer(
     ProcessNotificationService service,
     NotificationTemplateRenderer templates,
-    ILogger<PaymentApprovedConsumer> logger) : IConsumer<PaymentApprovedV1>
+    ILogger<PaymentApprovedConsumer> logger) : IConsumer<PaymentApprovedEventV1>
 {
-    public async Task Consume(ConsumeContext<PaymentApprovedV1> context)
+    public async Task Consume(ConsumeContext<PaymentApprovedEventV1> context)
     {
         using var scope = logger.BeginMessageScope(context);
 
         logger.LogInformation(
-            "Processando PaymentApprovedV1 para pedido {OrderId}, usuário {UserId}.",
+            "Processando PaymentApprovedEventV1 para pedido {OrderId}, usuário {UserId}.",
             context.Message.OrderId,
             context.Message.UserId);
 
         var body = templates.Render("PaymentApproved", new Dictionary<string, string>
         {
             ["OrderId"] = context.Message.OrderId.ToString(),
-            ["Amount"] = context.Message.Amount.ToString("N2")
+            ["Amount"] = context.Message.Amount.ToString(
+                "N2",
+                System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))
         });
 
         var input = new ProcessNotificationInput(
-            EventType: nameof(PaymentApprovedV1),
-            EventId: context.MessageId ?? context.Message.PaymentId,
+            EventType: nameof(PaymentApprovedEventV1),
+            EventId: context.Message.EventId,
             RecipientUserId: context.Message.UserId,
             Subject: "Pagamento aprovado",
             Body: body);

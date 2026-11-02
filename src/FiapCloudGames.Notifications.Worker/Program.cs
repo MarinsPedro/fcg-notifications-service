@@ -1,129 +1,15 @@
-using FiapCloudGames.Identity.Contracts.Events.V1;
-using FiapCloudGames.Notifications.Application.Abstractions.Delivery;
-using FiapCloudGames.Notifications.Application.Abstractions.Persistence;
-using FiapCloudGames.Notifications.Application.Features.Process;
-using FiapCloudGames.Notifications.Domain.Notifications;
-using FiapCloudGames.Notifications.Infrastructure.Delivery;
-using FiapCloudGames.Notifications.Infrastructure.Health;
-using FiapCloudGames.Notifications.Infrastructure.Persistence;
-using FiapCloudGames.Notifications.Infrastructure.Persistence.Repositories;
-using FiapCloudGames.Notifications.Worker.Consumers;
-using FiapCloudGames.Notifications.Worker.Events;
+using FiapCloudGames.BuildingBlocks.Hosting;
+using FiapCloudGames.Notifications.Worker;
 using FiapCloudGames.Notifications.Worker.Health;
-using FiapCloudGames.Notifications.Worker.Messaging;
-using FiapCloudGames.Notifications.Worker.Templates;
-using MassTransit;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = builder.Configuration.GetConnectionString("Database")
-    ?? throw new InvalidOperationException(
-        "A connection string 'Database' não foi configurada.");
-
-builder.Services.AddDbContext<NotificationsDbContext>(options =>
-    options.UseNpgsql(connectionString));
-builder.Services.AddScoped<INotificationsUnitOfWork>(provider =>
-    provider.GetRequiredService<NotificationsDbContext>());
-builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
-builder.Services.AddSingleton<INotificationSender, LogNotificationSender>();
-builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddSingleton<NotificationTemplateRenderer>();
-builder.Services.AddScoped<ProcessNotificationService>();
-
-// O MassTransit registra o check do barramento (RabbitMQ) com a tag "ready".
-builder.Services.AddHealthChecks()
-    .AddCheck<NotificationsDatabaseHealthCheck>(
-        "notifications-database",
-        tags: [WorkerHealthExtensions.ReadyTag]);
-
-var rabbit = RabbitMqSettings.From(builder.Configuration);
-
-builder.Services.AddMassTransit(bus =>
-{
-    bus.AddConsumer<UserCreatedConsumer>();
-    bus.AddConsumer<PaymentApprovedConsumer>();
-    bus.AddConsumer<PaymentRejectedConsumer>();
-    bus.AddConsumer<OrderCompletedConsumer>();
-    bus.AddConsumer<OrderFailedConsumer>();
-
-    bus.UsingRabbitMq((context, cfg) =>
-    {
-        cfg.Host(rabbit.Host, rabbit.Port, rabbit.VirtualHost, h =>
-        {
-            h.Username(rabbit.Username);
-            h.Password(rabbit.Password);
-        });
-
-        // Identity e Orders publicam com envelope do MassTransit, uma exchange por evento.
-        cfg.Message<UserCreatedEvent>(m => m.SetEntityName(ExchangeNames.UserCreated));
-        cfg.Message<OrderCompletedV1>(m => m.SetEntityName(ExchangeNames.OrderCompleted));
-        cfg.Message<OrderFailedV1>(m => m.SetEntityName(ExchangeNames.OrderFailed));
-
-        cfg.ReceiveEndpoint("notifications.user-created", e =>
-        {
-            e.ConfigureConsumer<UserCreatedConsumer>(context);
-            e.UseMessageRetry(r => r.Intervals(
-                TimeSpan.FromSeconds(1),
-                TimeSpan.FromSeconds(5),
-                TimeSpan.FromSeconds(15)));
-        });
-
-        // O Payments publica JSON puro (sem envelope) em uma exchange topic única,
-        // separando os eventos por routing key. Cada fila liga a sua key à mão.
-        cfg.ReceiveEndpoint("notifications.payment-approved", e =>
-        {
-            e.ConfigureConsumeTopology = false;
-            e.UseRawJsonDeserializer(RawSerializerOptions.All, isDefault: true);
-            e.Bind(ExchangeNames.PaymentsEvents, x =>
-            {
-                x.ExchangeType = "topic";
-                x.RoutingKey = ExchangeNames.PaymentPaidRoutingKey;
-            });
-            e.ConfigureConsumer<PaymentApprovedConsumer>(context);
-            e.UseMessageRetry(r => r.Intervals(
-                TimeSpan.FromSeconds(1),
-                TimeSpan.FromSeconds(5),
-                TimeSpan.FromSeconds(15)));
-        });
-
-        cfg.ReceiveEndpoint("notifications.payment-rejected", e =>
-        {
-            e.ConfigureConsumeTopology = false;
-            e.UseRawJsonDeserializer(RawSerializerOptions.All, isDefault: true);
-            e.Bind(ExchangeNames.PaymentsEvents, x =>
-            {
-                x.ExchangeType = "topic";
-                x.RoutingKey = ExchangeNames.PaymentFailedRoutingKey;
-            });
-            e.ConfigureConsumer<PaymentRejectedConsumer>(context);
-            e.UseMessageRetry(r => r.Intervals(
-                TimeSpan.FromSeconds(1),
-                TimeSpan.FromSeconds(5),
-                TimeSpan.FromSeconds(15)));
-        });
-
-        cfg.ReceiveEndpoint("notifications.order-completed", e =>
-        {
-            e.ConfigureConsumer<OrderCompletedConsumer>(context);
-            e.UseMessageRetry(r => r.Intervals(
-                TimeSpan.FromSeconds(1),
-                TimeSpan.FromSeconds(5),
-                TimeSpan.FromSeconds(15)));
-        });
-
-        cfg.ReceiveEndpoint("notifications.order-failed", e =>
-        {
-            e.ConfigureConsumer<OrderFailedConsumer>(context);
-            e.UseMessageRetry(r => r.Intervals(
-                TimeSpan.FromSeconds(1),
-                TimeSpan.FromSeconds(5),
-                TimeSpan.FromSeconds(15)));
-        });
-    });
-});
+builder.AddFiapServiceDefaults();
+builder.Services.AddNotificationsWorker(builder.Configuration);
 
 var app = builder.Build();
+
 app.MapWorkerHealthEndpoints();
+
 await app.RunAsync();

@@ -1,106 +1,72 @@
 using System.Text.Json;
-using FiapCloudGames.Identity.Contracts.Events.V1;
 using FiapCloudGames.Notifications.Worker.Events;
+using MassTransit;
 
 namespace FiapCloudGames.Notifications.UnitTests.Messaging;
 
-/// <summary>
-/// Garante que os eventos consumidos acompanham o que os produtores publicam.
-/// Os exemplos de JSON reproduzem os contratos do Payments
-/// (<c>PaymentPaidEventV1</c> e <c>PaymentFailedEventV1</c>) e do Identity
-/// (<c>UserCreatedEvent</c>).
-/// </summary>
 public sealed class EventContractsTests
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     [Fact]
-    public void PaymentPaidJson_MapsToPaymentApprovedV1()
+    public void PaymentApprovedJson_MapsProducerContract()
     {
-        var paymentId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
         var orderId = Guid.NewGuid();
         var userId = Guid.NewGuid();
         var json = $$"""
             {
-              "paymentId": "{{paymentId}}",
+              "eventId": "{{eventId}}",
               "orderId": "{{orderId}}",
               "userId": "{{userId}}",
               "amount": 84.90,
-              "providerTransactionId": "tx-123",
               "occurredAtUtc": "2026-10-27T12:00:00+00:00"
             }
             """;
 
-        var message = JsonSerializer.Deserialize<PaymentApprovedV1>(json, Json);
+        var message = JsonSerializer.Deserialize<PaymentApprovedEventV1>(json, Json);
 
         Assert.NotNull(message);
-        Assert.Equal(paymentId, message.PaymentId);
+        Assert.Equal(eventId, message.EventId);
         Assert.Equal(orderId, message.OrderId);
         Assert.Equal(userId, message.UserId);
         Assert.Equal(84.90m, message.Amount);
     }
 
     [Fact]
-    public void PaymentFailedJson_MapsFailureReasonToPaymentRejectedV1()
-    {
-        var paymentId = Guid.NewGuid();
-        var json = $$"""
-            {
-              "paymentId": "{{paymentId}}",
-              "orderId": "{{Guid.NewGuid()}}",
-              "userId": "{{Guid.NewGuid()}}",
-              "amount": 10.00,
-              "failureReason": "Cartão recusado",
-              "occurredAtUtc": "2026-10-27T12:00:00+00:00"
-            }
-            """;
-
-        var message = JsonSerializer.Deserialize<PaymentRejectedV1>(json, Json);
-
-        Assert.NotNull(message);
-        Assert.Equal(paymentId, message.PaymentId);
-        Assert.Equal("Cartão recusado", message.FailureReason);
-    }
-
-    [Fact]
-    public void UserCreatedJson_MapsNameToUserCreatedEvent()
+    public void PaymentRejectedJson_MapsRejectionReason()
     {
         var eventId = Guid.NewGuid();
-        var userId = Guid.NewGuid();
         var json = $$"""
             {
               "eventId": "{{eventId}}",
-              "userId": "{{userId}}",
-              "name": "Maria Silva",
-              "email": "maria@example.com",
+              "orderId": "{{Guid.NewGuid()}}",
+              "userId": "{{Guid.NewGuid()}}",
+              "amount": 10.00,
+              "rejectionReason": "Cartão recusado",
               "occurredAtUtc": "2026-10-27T12:00:00+00:00"
             }
             """;
 
-        var message = JsonSerializer.Deserialize<UserCreatedEvent>(json, Json);
+        var message = JsonSerializer.Deserialize<PaymentRejectedEventV1>(json, Json);
 
         Assert.NotNull(message);
         Assert.Equal(eventId, message.EventId);
-        Assert.Equal(userId, message.UserId);
-        Assert.Equal("Maria Silva", message.Name);
-        Assert.Equal("maria@example.com", message.Email);
+        Assert.Equal("Cartão recusado", message.RejectionReason);
     }
 
     [Fact]
-    public void UserCreatedEvent_KeepsTheNamespaceAndNameOfTheIdentityContract()
+    public void Contracts_UseNamespaceIndependentMessageUrns()
     {
-        // O MassTransit casa a mensagem pelo namespace e pelo nome do tipo.
+        Assert.Equal("urn:message:UserCreatedEvent", MessageUrn.ForType<UserCreatedEvent>().ToString());
         Assert.Equal(
-            "FiapCloudGames.Identity.Contracts.Events.V1.UserCreatedEvent",
-            typeof(UserCreatedEvent).FullName);
-    }
-
-    [Fact]
-    public void ExchangeNames_MatchWhatTheProducersPublish()
-    {
-        Assert.Equal("identity.user-created.v1", ExchangeNames.UserCreated);
-        Assert.Equal("fcg.payments.events", ExchangeNames.PaymentsEvents);
-        Assert.Equal("payments.paid", ExchangeNames.PaymentPaidRoutingKey);
-        Assert.Equal("payments.failed", ExchangeNames.PaymentFailedRoutingKey);
+            "urn:message:PaymentApprovedEventV1",
+            MessageUrn.ForType<PaymentApprovedEventV1>().ToString());
+        Assert.Equal(
+            "urn:message:PaymentRejectedEventV1",
+            MessageUrn.ForType<PaymentRejectedEventV1>().ToString());
+        Assert.Equal(
+            "urn:message:OrderCompletedEventV1",
+            MessageUrn.ForType<OrderCompletedEventV1>().ToString());
     }
 }

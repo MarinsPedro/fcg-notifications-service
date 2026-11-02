@@ -67,18 +67,18 @@ public sealed class NotificationTests
     }
 
     [Fact]
-    public void ResetForRetry_WhenCanRetry_SetsStatusToPending()
+    public void PrepareRetry_WhenCanRetry_SetsStatusToPending()
     {
         var notification = CreateValidNotification();
         notification.MarkFailed(Now);
 
-        notification.ResetForRetry();
+        notification.PrepareRetry();
 
         Assert.Equal(NotificationStatus.Pending, notification.Status);
     }
 
     [Fact]
-    public void ResetForRetry_WhenAtMaxAttempts_Throws()
+    public void PrepareRetry_WhenAtMaxAttempts_Throws()
     {
         var notification = CreateValidNotification();
         for (var i = 0; i < Notification.MaxAttempts; i++)
@@ -86,12 +86,12 @@ public sealed class NotificationTests
             notification.MarkFailed(Now.AddMinutes(i));
             if (i < Notification.MaxAttempts - 1)
             {
-                notification.ResetForRetry();
+                notification.PrepareRetry();
             }
         }
 
         Assert.False(notification.CanRetry);
-        Assert.Throws<DomainRuleViolationException>(() => notification.ResetForRetry());
+        Assert.Throws<DomainRuleViolationException>(() => notification.PrepareRetry());
     }
 
     [Fact]

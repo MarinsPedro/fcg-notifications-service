@@ -11,6 +11,10 @@ internal sealed class NotificationRepository(NotificationsDbContext context) : I
     public Task<Notification?> FindByIdAsync(Guid id, CancellationToken cancellationToken) =>
         context.Notifications.SingleOrDefaultAsync(n => n.Id == id, cancellationToken);
 
-    public Task<bool> ExistsByEventIdAsync(Guid eventId, CancellationToken cancellationToken) =>
-        context.Notifications.AnyAsync(n => n.EventId == eventId, cancellationToken);
+    public Task<Notification?> FindByEventIdAsync(
+        Guid eventId,
+        CancellationToken cancellationToken) =>
+        context.Notifications.SingleOrDefaultAsync(
+            notification => notification.EventId == eventId,
+            cancellationToken);
 }

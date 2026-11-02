@@ -1,5 +1,5 @@
 using System.Reflection;
-using System.Text.RegularExpressions;
+using System.Text.Encodings.Web;
 
 namespace FiapCloudGames.Notifications.Worker.Templates;
 
@@ -14,7 +14,10 @@ public sealed partial class NotificationTemplateRenderer
 
         foreach (var (key, value) in placeholders)
         {
-            html = html.Replace($"{{{{{key}}}}}", value, StringComparison.Ordinal);
+            html = html.Replace(
+                $"{{{{{key}}}}}",
+                HtmlEncoder.Default.Encode(value),
+                StringComparison.Ordinal);
         }
 
         return html;
