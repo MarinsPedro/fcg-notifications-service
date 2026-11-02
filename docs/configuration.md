@@ -32,20 +32,17 @@ RabbitMq__Username=guest
 RabbitMq__Password=guest
 ```
 
-O Worker consome 5 filas. Cada produtor publica de um jeito, e o Notifications
-se liga ao que ele publica (formatos e exemplos em [endpoints.md](endpoints.md)):
+O Worker consome 5 filas MassTransit, configuradas em `fcg-orchestration/config/*notifications-worker.env` e na classe `RabbitMqTopologyConfigurator.cs`:
 
-| Fila | Exchange | Routing key | Formato |
-|---|---|---|---|
-| `notifications.user-created` | `identity.user-created.v1` | - | envelope do MassTransit |
-| `notifications.payment-approved` | `fcg.payments.events` (topic) | `payments.paid` | JSON puro |
-| `notifications.payment-rejected` | `fcg.payments.events` (topic) | `payments.failed` | JSON puro |
-| `notifications.order-completed` | `orders.order-completed.v1` | - | envelope do MassTransit |
-| `notifications.order-failed` | `orders.order-failed.v1` | - | envelope do MassTransit |
+| Fila | Exchange | Formato |
+|---|---|---|
+| `notifications.user-created` | `identity.user-created.v1` | MassTransit |
+| `notifications.payment-approved` | `payments.payment-approved.v1` | MassTransit |
+| `notifications.payment-rejected` | `payments.payment-rejected.v1` | MassTransit |
+| `notifications.order-completed` | `orders.order-completed.v1` | MassTransit |
+| `notifications.order-failed` | `orders.order-failed.v1` | MassTransit |
 
-Os nomes ficam em `ExchangeNames.cs`. O Orders ainda não publica os dois últimos
-eventos; os nomes seguem o padrão `<produtor>.<evento>.v1` que ele usa e são uma
-proposta a confirmar.
+No pacote inspecionado, Orders publica `OrderCompletedEventV1`, mas a publicacao de `OrderFailedEventV1` nao foi encontrada. O consumer do Notifications esta preparado para recebe-lo, quando publicado.
 
 ## Variáveis de ambiente
 
@@ -61,32 +58,17 @@ proposta a confirmar.
 | `RabbitMq__Password` | Senha do RabbitMQ | `guest` |
 | `ASPNETCORE_ENVIRONMENT` | Ambiente da aplicação | `Development` |
 
-## Kubernetes
+## Kubernetes consolidado
 
-Em `k8s/base/` a configuração é separada em ConfigMap e Secrets:
+Use `../fcg-orchestration/FCG-K8S.cmd`. Os tres manifests proprios do servico ficam em `k8s/`: `api.yaml`, `worker.yaml`, `migrations-job.yaml`. O Notifications nao sobe um PostgreSQL isolado: `fcg_notifications` e criado no Postgres compartilhado pelo script central.
 
-| Recurso | Conteúdo |
-|---|---|
-| `notifications-config` (ConfigMap) | `ASPNETCORE_ENVIRONMENT`, `Authentication__Authority` (`http://identity-api:8080`), `Authentication__Audience`, `RabbitMq__Host` (`rabbitmq`), `RabbitMq__Port` e `RabbitMq__VirtualHost` |
-| `notifications-secret` (Secret) | `ConnectionStrings__Database` e `RabbitMq__Username`/`RabbitMq__Password` |
-| `notifications-db-secret` (Secret) | `POSTGRES_DB`, `POSTGRES_USER` e `POSTGRES_PASSWORD`, usados só pelo contêiner do PostgreSQL |
+- `fcg-notifications-api-config`, `fcg-notifications-worker-config` e `fcg-notifications-migrations-config` sao gerados de `fcg-orchestration/config/k8s-notifications-*.env`.
+- `fcg-domain-dev-secrets` contem a chave `notifications-connection-string` e `fcg-dev-secrets` fornece as credenciais RabbitMQ.
+- A porta externa para Swagger e `127.0.0.1:5187`, via port-forward criado pelo script.
+- No Compose, a porta e `127.0.0.1:5087` e a senha fica em `runtime/compose.env`.
+- A senha demonstrativa `Fiap@123456` e gerada somente em instalacao DEV nova; clusters existentes preservam os valores anteriores.
 
-Os dados do `notifications-db-secret` precisam ser iguais aos da connection
-string do `notifications-secret` (banco `fcg_notifications`, usuário
-`fcg_notifications_app` e a mesma senha). Se divergirem, a API, o Worker e as
-migrations não autenticam no banco.
-
-O banco roda como Deployment (`notifications-db`, PostgreSQL 17) com volume
-persistente de 1Gi (`notifications-db-data`), que exige uma StorageClass padrão
-no cluster. As tabelas são criadas pelo Job `notifications-migrations` (imagem
-`fcg-notifications-migrations`), que tenta até 10 vezes enquanto o banco sobe.
-
-A API e o Worker são Deployments separados (`notifications-api` e
-`notifications-worker`); só a API tem Service.
-
-O RabbitMQ e o Identity não fazem parte destes manifests: o ConfigMap espera
-Services chamados `rabbitmq` e `identity-api` no namespace `fcg`. Sem o
-RabbitMQ, o Worker não consegue consumir as filas.
+O sistema de eventos atual utiliza MassTransit para declarar cinco filas e exchanges, conforme `RabbitMqTopologyConfigurator.cs` e `fcg-orchestration/config/*notifications-worker.env`.
 
 ## Logs e rastreio
 
@@ -103,7 +85,7 @@ achar a mensagem exata. O console do Worker imprime esses campos porque o
 - O Worker também expõe `/health/live` e `/health/ready` na porta 8080 do
   contêiner. O `ready` verifica o PostgreSQL e a conexão com o RabbitMQ; o
   `live` só confirma que o processo responde. Os probes do Kubernetes em
-  `deployment-worker.yaml` usam esses endpoints. Localmente, defina
+  `worker.yaml` usam esses endpoints. Localmente, defina
   `ASPNETCORE_URLS` (por exemplo `http://localhost:5090`) para escolher a porta.
 
 ## Produção

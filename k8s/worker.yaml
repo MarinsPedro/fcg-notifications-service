@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notifications-worker
+  namespace: fcg
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: notifications-worker}
+  template:
+    metadata:
+      labels: {app: notifications-worker}
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: notifications-worker
+          image: fcg-notifications-worker:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - {name: http, containerPort: 8080}
+          envFrom:
+            - configMapRef: {name: fcg-notifications-worker-config}
+          env:
+            - name: ConnectionStrings__Database
+              valueFrom:
+                secretKeyRef: {name: fcg-domain-dev-secrets, key: notifications-connection-string}
+            - name: RabbitMq__Username
+              valueFrom:
+                secretKeyRef: {name: fcg-dev-secrets, key: rabbitmq-username}
+            - name: RabbitMq__Password
+              valueFrom:
+                secretKeyRef: {name: fcg-dev-secrets, key: rabbitmq-password}
+          startupProbe:
+            httpGet: {path: /health/live, port: 8080}
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet: {path: /health/ready, port: 8080}
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 12
+          livenessProbe:
+            httpGet: {path: /health/live, port: 8080}
+            periodSeconds: 10
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 512Mi}

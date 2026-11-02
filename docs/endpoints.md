@@ -78,68 +78,18 @@ Authorization: Bearer <token-service>
 
 ## Eventos consumidos (Worker)
 
-O Worker consome 5 filas do RabbitMQ via MassTransit. Cada evento gera uma
-notificação no banco e tenta o envio imediato. Cada produtor publica de um
-jeito, e o Notifications se adapta ao contrato publicado por ele.
+O Worker registra cinco consumers MassTransit com filas individuais. Os nomes das exchanges foram conferidos no codigo atual e ficam nos `.env` do orquestrador.
 
-| Evento no Notifications | Produtor | Exchange | Routing key | Fila | Formato |
-|---|---|---|---|---|---|
-| `UserCreatedEvent` | Identity | `identity.user-created.v1` | - | `notifications.user-created` | envelope do MassTransit |
-| `PaymentApprovedV1` | Payments (`PaymentPaidEventV1`) | `fcg.payments.events` (topic) | `payments.paid` | `notifications.payment-approved` | JSON puro |
-| `PaymentRejectedV1` | Payments (`PaymentFailedEventV1`) | `fcg.payments.events` (topic) | `payments.failed` | `notifications.payment-rejected` | JSON puro |
-| `OrderCompletedV1` | Orders (a confirmar) | `orders.order-completed.v1` | - | `notifications.order-completed` | envelope do MassTransit |
-| `OrderFailedV1` | Orders (a confirmar) | `orders.order-failed.v1` | - | `notifications.order-failed` | envelope do MassTransit |
+| Evento | Produtor | Exchange | Fila |
+|---|---|---|---|
+| `UserCreatedEvent` | Identity | `identity.user-created.v1` | `notifications.user-created` |
+| `PaymentApprovedEventV1` | Payments | `payments.payment-approved.v1` | `notifications.payment-approved` |
+| `PaymentRejectedEventV1` | Payments | `payments.payment-rejected.v1` | `notifications.payment-rejected` |
+| `OrderCompletedEventV1` | Orders | `orders.order-completed.v1` | `notifications.order-completed` |
+| `OrderFailedEventV1` | Orders (consumer preparado) | `orders.order-failed.v1` | `notifications.order-failed` |
 
-Os nomes das exchanges e as routing keys ficam em `ExchangeNames.cs`.
+Os contratos atuais possuem `EventId` para idempotencia, `OrderId`/`UserId` para rastreamento e metadados adicionais. Os eventos sao tratados como mensagens do MassTransit, **nao como JSON puro com `payments.paid`/`payments.failed`**.
 
-- **Identity:** o consumer usa uma cópia do contrato
-  (`Contracts/Identity/UserCreatedEvent.cs`) com o mesmo namespace e o mesmo
-  nome do tipo do Identity, porque o MassTransit casa a mensagem pelo tipo.
-  Campos: `eventId`, `userId`, `name`, `email` e `occurredAtUtc`.
-- **Payments:** publica JSON puro, sem envelope. As filas desligam a topologia
-  automática e se ligam à exchange `fcg.payments.events` à mão, uma routing key
-  por fila. Campos lidos: `paymentId`, `orderId`, `userId` e `amount` (aprovado);
-  `paymentId`, `orderId`, `userId` e `failureReason` (recusado). A deduplicação
-  usa o `MessageId` da mensagem, ou o `paymentId` quando ele não vier.
-- **Orders:** ainda não publica estes dois eventos. Os nomes seguem o padrão
-  `<produtor>.<evento>.v1` que o Orders usa e são uma proposta a confirmar.
+A revisao do Orders recebido confirmou publicacao do evento `OrderCompletedEventV1`, mas nao identificou publicacao de `OrderFailedEventV1`. O simples fato de existir uma fila/consumer nao prova que o produtor publique esse tipo de evento; valide separadamente esse fluxo.
 
-### Exemplos de mensagem
-
-Pagamento aprovado (`payments.paid`, JSON puro):
-
-```json
-{
-  "paymentId": "uuid",
-  "orderId": "uuid",
-  "userId": "uuid",
-  "amount": 84.90,
-  "providerTransactionId": "tx-123",
-  "occurredAtUtc": "2026-10-27T12:00:00+00:00"
-}
-```
-
-Pagamento recusado (`payments.failed`, JSON puro):
-
-```json
-{
-  "paymentId": "uuid",
-  "orderId": "uuid",
-  "userId": "uuid",
-  "amount": 10.00,
-  "failureReason": "Cartão recusado",
-  "occurredAtUtc": "2026-10-27T12:00:00+00:00"
-}
-```
-
-Usuário criado (`identity.user-created.v1`, conteúdo da mensagem no envelope):
-
-```json
-{
-  "eventId": "uuid",
-  "userId": "uuid",
-  "name": "Maria Silva",
-  "email": "maria@example.com",
-  "occurredAtUtc": "2026-10-27T12:00:00+00:00"
-}
-```
+O `LogNotificationSender` e um mecanismo simulado de entrega (logs), nao um gateway de email real.

@@ -1,5 +1,8 @@
 # Fiap Cloud Games — Notifications Service
 
+> **Orquestracao consolidada (novembro/2026):** Use `../fcg-orchestration/FCG-COMPOSE.cmd` ou `FCG-K8S.cmd`. A pasta `k8s/` deste servico agora contem somente `api.yaml`, `worker.yaml` e `migrations-job.yaml`. O banco `fcg_notifications` e o setimo banco da instancia PostgreSQL compartilhada de cada ambiente; Secrets e ConfigMaps DEV sao criados pelo instalador central. O `LogNotificationSender` representa entrega simulada, nao envio real de email.
+
+
 Serviço responsável por receber eventos de outros microsserviços e enviar notificações aos usuários da plataforma Fiap Cloud Games.
 
 Este repositório é independente do monólito. Ele possui banco, migrations, pipeline e ciclo de entrega próprios.
@@ -18,8 +21,8 @@ Este repositório é independente do monólito. Ele possui banco, migrations, pi
 | Evento | Produtor | Fila | Template |
 |---|---|---|---|
 | `UserCreatedEvent` | Identity | `notifications.user-created` | `UserCreated.html` |
-| `PaymentApprovedV1` (`payments.paid`) | Payments | `notifications.payment-approved` | `PaymentApproved.html` |
-| `PaymentRejectedV1` (`payments.failed`) | Payments | `notifications.payment-rejected` | `PaymentRejected.html` |
+| `PaymentApprovedEventV1` | Payments | `notifications.payment-approved` | `PaymentApproved.html` |
+| `PaymentRejectedEventV1` | Payments | `notifications.payment-rejected` | `PaymentRejected.html` |
 | `OrderCompletedV1` | Orders | `notifications.order-completed` | `OrderCompleted.html` |
 | `OrderFailedV1` | Orders | `notifications.order-failed` | `OrderFailed.html` |
 
@@ -53,19 +56,9 @@ docs/
   endpoints.md
   testing.md
 k8s/
-  base/
-    namespace.yaml          namespace fcg
-    configmap.yaml          configurações não-sensíveis (JWT, RabbitMQ host)
-    secret.yaml             connection string e credenciais RabbitMQ
-    db-secret.yaml          credenciais do PostgreSQL (iguais às do secret.yaml)
-    db-pvc.yaml             volume persistente do banco (1Gi)
-    db-deployment.yaml      Deployment do PostgreSQL 17 (notifications-db)
-    db-service.yaml         Service ClusterIP do banco (porta 5432)
-    migrations-job.yaml     Job que aplica as migrations e termina
-    deployment-api.yaml     Deployment da API HTTP
-    deployment-worker.yaml  Deployment do Worker (consumers RabbitMQ)
-    service.yaml            Service ClusterIP (porta 80 → 8080)
-    kustomization.yaml      agregador dos recursos
+  api.yaml              API e Service ClusterIP
+  worker.yaml           Worker e suas cinco filas
+  migrations-job.yaml   Migrations no banco fcg_notifications compartilhado
 ```
 
 As regras e exemplos da estrutura estão em [docs/architecture.md](docs/architecture.md).
@@ -111,90 +104,23 @@ mantenha os repositórios como irmãos e use:
 dotnet build FiapCloudGames.Notifications.slnx -p:UseLocalBuildingBlocks=true
 ```
 
-O padrão é `UseLocalBuildingBlocks=false`, portanto CI e produção continuam
-usando a versão publicada definida em `Directory.Packages.props`.
+O padrão deste pacote consolidado é `UseLocalBuildingBlocks=true`, para uso do BuildingBlocks da pasta irmã. O feed privado do GitHub não é necessário.
 
-## Execução local com Docker Compose (recomendado)
+## Execução pela orquestração central (recomendado)
 
-A forma mais simples de rodar o serviço completo:
-
-```powershell
-docker compose up --build
-```
-
-Isso sobe automaticamente:
-
-| Serviço | Container | Porta |
-|---|---|---|
-| PostgreSQL 17 | `fcg-notifications-db` | `5435` |
-| RabbitMQ 3.13 | `fcg-notifications-rabbit` | `5672` (AMQP) / `15672` (Management) |
-| Migrations | `fcg-notifications-migrations` | — (executa e encerra) |
-| API | `fcg-notifications-api` | `5087` |
-| Worker | `fcg-notifications-worker` | — (consome filas RabbitMQ) |
-
-O Worker também expõe `/health/live` e `/health/ready` na porta 8080 do
-contêiner, usados pelos probes do Kubernetes (veja
-[docs/configuration.md](docs/configuration.md)). O Compose não publica essa porta.
-
-A senha padrão do banco é `DevPass123!`. O RabbitMQ usa `guest`/`guest`.
-
-Após subir, o Swagger fica disponível em `http://localhost:5087/swagger` e o
-RabbitMQ Management em `http://localhost:15672`.
-
-Para derrubar tudo e limpar os volumes:
+O Notifications agora faz parte do **Compose e K8s de todo o FCG**. Não há mais `docker-compose.yml` individual ou `k8s/base` com PostgreSQL próprio.
 
 ```powershell
-docker compose down -v
+cd ..\fcg-orchestration
+.\FCG-COMPOSE.cmd  # Notifications API: http://127.0.0.1:5087/swagger
+.\FCG-K8S.cmd      # Notifications API: http://127.0.0.1:5187/swagger
 ```
 
-## Deploy em Kubernetes
+Ambos iniciam migrations, API e Worker. Em cada ambiente existe um banco `fcg_notifications` separado, dentro da instância PostgreSQL compartilhada de sete bancos. Senhas e parâmetros são fornecidos pelo orquestrador. RabbitMQ e Identity também são compartilhados apenas **dentro de cada ambiente** (Compose e K8s independentes).
 
-Os manifests ficam em `k8s/base/` e usam Kustomize (embutido no `kubectl`).
+As credenciais de uma instalação DEV totalmente nova usam `Fiap@123456`, somente para demonstração; upgrades preservam as senhas originais dos seis serviços antigos. **Nunca use `docker compose down -v` ou exclua PVCs indiscriminadamente**.
 
-1. Construa as imagens e carregue no cluster local (exemplo com Kind):
-
-```powershell
-docker build --target final --secret "id=nuget_config,src=$env:APPDATA\NuGet\NuGet.Config" -t fcg-notifications:latest .
-docker build --target worker --secret "id=nuget_config,src=$env:APPDATA\NuGet\NuGet.Config" -t fcg-notifications-worker:latest .
-docker build --target migrations --secret "id=nuget_config,src=$env:APPDATA\NuGet\NuGet.Config" -t fcg-notifications-migrations:latest .
-kind load docker-image fcg-notifications:latest fcg-notifications-worker:latest fcg-notifications-migrations:latest
-```
-
-2. Antes de aplicar, edite `k8s/base/secret.yaml` (connection string e
-   credenciais do RabbitMQ) e `k8s/base/db-secret.yaml` (credenciais do
-   PostgreSQL). A senha do banco precisa ser a mesma nos dois arquivos. As
-   senhas que vêm nesses arquivos são valores de estudo, só para o cluster
-   local; em qualquer outro ambiente, substitua-as e não as versione.
-
-3. Aplique os manifests. Além da API e do Worker, eles criam o banco
-   (`notifications-db`, com volume persistente) e o Job `notifications-migrations`,
-   que cria as tabelas:
-
-```powershell
-kubectl apply -k k8s/base/
-```
-
-4. Verifique os recursos:
-
-```powershell
-kubectl get pods,jobs -n fcg -l "app in (notifications-api, notifications-worker, notifications-db, notifications-migrations)"
-```
-
-Devem aparecer `notifications-db`, `notifications-api` e `notifications-worker`
-em `Running` e o Job `notifications-migrations` em `Completed`. Para ver o
-resultado das migrations:
-
-```powershell
-kubectl logs -n fcg job/notifications-migrations
-```
-
-Dentro do cluster, outros serviços acessam a API via `http://notifications-api:80`.
-O Worker consome as filas do RabbitMQ automaticamente via MassTransit.
-
-O RabbitMQ e o Identity não fazem parte destes manifests: o ConfigMap espera
-Services chamados `rabbitmq` e `identity-api` no namespace `fcg`. Sem o
-RabbitMQ, o Worker não consome as filas. Veja
-[docs/configuration.md](docs/configuration.md) e [docs/endpoints.md](docs/endpoints.md).
+Os três manifests ativos estão na pasta `k8s/` deste repositório: `api.yaml`, `worker.yaml`, `migrations-job.yaml`. ConfigMaps e Secrets são gerados pelo script da orquestração.
 
 ## Execução local sem Docker
 
@@ -231,7 +157,6 @@ $env:RabbitMq__Password = "guest"
 5. Restaure, aplique as migrations e execute:
 
 ```powershell
-dotnet tool restore
 dotnet restore FiapCloudGames.Notifications.slnx
 dotnet run --project src/FiapCloudGames.Notifications.Migrations
 dotnet run --project src/FiapCloudGames.Notifications.Api
