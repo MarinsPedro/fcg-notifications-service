@@ -21,6 +21,14 @@ public sealed class NotificationsApiFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
+        // O appsettings.json dos serviços ficou vazio (a configuração vem do orquestrador).
+        // O Program lê estes valores ao montar o host, antes de ConfigureAppConfiguration.
+        builder.UseSetting(
+            "ConnectionStrings:Database",
+            "Host=localhost;Database=integration;Username=test;Password=test");
+        builder.UseSetting("Authentication:Authority", "https://localhost");
+        builder.UseSetting("Authentication:Audience", "notifications-api");
+        builder.UseSetting("Authentication:Issuer", "integration-issuer");
         builder.ConfigureLogging(logging =>
         {
             logging.ClearProviders();
